@@ -14,6 +14,7 @@ use Ecotone\Messaging\Handler\ReferenceSearchService;
 use Ecotone\Messaging\MessageConverter\DefaultHeaderMapper;
 use Ecotone\Messaging\MessageConverter\HeaderMapper;
 use Ecotone\Modelling\EventSourcedRepository;
+use Ecotone\Modelling\RepositoryBuilder;
 use Ecotone\Modelling\StandardRepository;
 use Prooph\EventStore\EventStore;
 use Prooph\EventStore\Pdo\Container\AbstractEventStoreFactory;
@@ -27,31 +28,37 @@ use Prooph\EventStore\Pdo\WriteLockStrategy\NoLockStrategy;
 use Prooph\EventStore\Pdo\WriteLockStrategy\PostgresAdvisoryLockStrategy;
 use Prooph\EventStore\StreamName;
 
-class ProophRepositoryBuilder
+class ProophRepositoryBuilder implements RepositoryBuilder
 {
+    const EVENT_STORE_TYPE_MYSQL = "mysql";
+    const EVENT_STORE_TYPE_POSTGRES = "postgres";
+    const EVENT_STORE_TYPE_MARIADB = "mariadb";
+
     private const SINGLE_STREAM_PERSISTENCE = "single";
     private const AGGREGATE_STREAM_PERSISTENCE = "aggregate";
 
-    /** @var string|EventStore EventStore reference */
-    private string|EventStore $eventStore;
+    private string $eventStoreType;
     private ?ProophEventConverter $eventConverter;
     private string $streamPersistenceStrategy = self::SINGLE_STREAM_PERSISTENCE;
     /** @var int How many event should we returned on one call */
     private int $loadBatchSize = 1000;
     private array $handledAggregateClassNames;
-    private EventMapper $eventMapper;
     private array $headerMapper = [];
     private bool $enableWriteLockStrategy = false;
     private string $eventStreamTable = SingleStreamConfiguration::DEFAULT_STREAM_TABLE;
 
-    public static function create(string $eventStoreReference, string $streamPersistenceStrategy, int $loadBatchSize) : static
+    private function __construct() {}
+
+    /**
+     * @param string $eventStoreType mysql|postgres|mariadb
+     */
+    public static function create(string $eventStoreType) : static
     {
+        $self = new static();
 
-    }
+        $self->eventStoreType = $eventStoreType;
 
-    public static function createWithEventStore(EventStore $eventStore) : static
-    {
-
+        return $self;
     }
 
     public function canHandle(string $aggregateClassName): bool
@@ -75,45 +82,47 @@ class ProophRepositoryBuilder
             $headerMapper = DefaultHeaderMapper::createWith($this->headerMapper, $this->headerMapper, $conversionService);
         }
 
-        if ($this->eventStore instanceof EventStore) {
-            $eventStore = $this->eventStore;
-        }else {
-            $connection = null;
-            $writeLockStrategy = new NoLockStrategy();
-            if ($this->enableWriteLockStrategy) {
-                $writeLockStrategy = match ($this->eventStore) {
-                    MySqlEventStore::class =>  new MysqlMetadataLockStrategy($connection),
-                    MariaDbEventStore::class => new MariaDbMetadataLockStrategy($connection),
-                    PostgresEventStore::class => new PostgresAdvisoryLockStrategy($connection),
-                    default => throw new \Exception('Unexpected match value ' . $this->eventStore)
-                };
-            }
-
-            $persistenceStrategy = null;
-
-            $persistenceStrategy = match ($this->eventStore) {
-                MySqlEventStore::class => $this->getMysqlPersistenceStrategy(),
-                MariaDbEventStore::class => $this->getMeriaPersistenceStrategy(),
-                PostgresEventStore::class => $this->getPostgresPersistenceStrategy()
+        $connection = null; // what to do with connection. Require ecotone/dbal and do wrapper http://dan.doezema.com/2015/08/doctrine-2-pdo-object/?
+        $writeLockStrategy = new NoLockStrategy();
+        if ($this->enableWriteLockStrategy) {
+            $writeLockStrategy = match ($this->eventStoreType) {
+                self::EVENT_STORE_TYPE_MYSQL =>  new MysqlMetadataLockStrategy($connection),
+                self::EVENT_STORE_TYPE_MARIADB => new MariaDbMetadataLockStrategy($connection),
+                self::EVENT_STORE_TYPE_POSTGRES => new PostgresAdvisoryLockStrategy($connection),
+                default => throw new \Exception('Unexpected match value ' . $this->eventStoreType)
             };
-
-            $eventStore =  $eventStore = new $this->eventStore(
-                $this->eventMapper,
-                $connection,
-                $persistenceStrategy,
-                $this->loadBatchSize,
-                $this->eventStreamTable,
-                true,
-                $writeLockStrategy
-        );
         }
+
+        $persistenceStrategy = null;
+
+        $persistenceStrategy = match ($this->eventStoreType) {
+            self::EVENT_STORE_TYPE_MYSQL => $this->getMysqlPersistenceStrategy(),
+            self::EVENT_STORE_TYPE_MARIADB => $this->getMeriaPersistenceStrategy(),
+            self::EVENT_STORE_TYPE_POSTGRES => $this->getPostgresPersistenceStrategy()
+        };
+
+        $eventStoreClass = match($this->eventStoreType) {
+            self::EVENT_STORE_TYPE_MYSQL => MySqlEventStore::class,
+            self::EVENT_STORE_TYPE_MARIADB => MariaDbEventStore::class,
+            self::EVENT_STORE_TYPE_POSTGRES => PostgresEventStore::class
+        };
+
+        $eventStore = new $eventStoreClass(
+            $referenceSearchService->get(EventMapper::class),
+            $connection,
+            $persistenceStrategy,
+            $this->loadBatchSize,
+            $this->eventStreamTable,
+            true,
+            $writeLockStrategy
+        );
 
         return new ProophRepository(
             $this->handledAggregateClassNames,
             $eventStore,
-            $this->streamPersistenceStrategy === self::SINGLE_STREAM_PERSISTENCE ? new SingleStreamConfiguration() : new OneStreamPerAggregateConfiguration(),
+            $this->streamPersistenceStrategy === self::SINGLE_STREAM_PERSISTENCE ? new SingleStreamConfiguration($this->eventStreamTable) : new OneStreamPerAggregateConfiguration(),
             $headerMapper,
-            $this->eventMapper,
+            $referenceSearchService->get(EventMapper::class),
             $conversionService
         );
     }
