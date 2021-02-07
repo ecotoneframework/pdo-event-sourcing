@@ -5,7 +5,7 @@ namespace Test\Ecotone\EventSourcing\Fixture\Ticket;
 
 
 use Ecotone\EventSourcing\ProophRepositoryBuilder;
-use Ecotone\Messaging\Annotation\ServiceContext;
+use Ecotone\Messaging\Attribute\ServiceContext;
 use Ecotone\Modelling\RepositoryBuilder;
 
 class MessagingConfiguration

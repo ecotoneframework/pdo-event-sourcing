@@ -5,18 +5,30 @@ namespace Test\Ecotone\EventSourcing;
 
 
 use Ecotone\Dbal\DbalReconnectableConnectionFactory;
+use Ecotone\EventSourcing\ProophRepository;
 use Ecotone\Messaging\Handler\InMemoryReferenceSearchService;
 use Enqueue\Dbal\DbalConnectionFactory;
 use Enqueue\Dbal\ManagerRegistryConnectionFactory;
 use Interop\Queue\ConnectionFactory;
 use PHPUnit\Framework\TestCase;
 
-abstract class DbalMessagingTest extends TestCase
+abstract class EventSourcingMessagingTest extends TestCase
 {
     /**
      * @var DbalConnectionFactory|ManagerRegistryConnectionFactory
      */
     private $dbalConnectionFactory;
+
+    protected function setUp(): void
+    {
+//        it does not work under transaction?
+        $this->getConnectionFactory()->createContext()->getDbalConnection()->beginTransaction();
+    }
+
+    protected function tearDown(): void
+    {
+        $this->getConnectionFactory()->createContext()->getDbalConnection()->rollBack();
+    }
 
     public function getConnectionFactory(bool $isRegistry = false) : ConnectionFactory
     {
@@ -36,10 +48,13 @@ abstract class DbalMessagingTest extends TestCase
         return $this->dbalConnectionFactory;
     }
 
-    protected function getReferenceSearchServiceWithConnection()
+    protected function getReferenceSearchServiceWithConnection(array $objects = [])
     {
-        return InMemoryReferenceSearchService::createWith([
-            DbalConnectionFactory::class => $this->getConnectionFactory()
-        ]);
+        return InMemoryReferenceSearchService::createWith(
+            array_merge(
+                [DbalConnectionFactory::class => $this->getConnectionFactory()],
+                $objects
+            )
+        );
     }
 }

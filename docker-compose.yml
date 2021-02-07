@@ -2,7 +2,7 @@ version: "3"
 
 services:
   app:
-    image: simplycodedsoftware/ci:7.4
+    image: simplycodedsoftware/php:8.0
     volumes:
       - "$PWD:/data/app"
     user: 1000:1000
@@ -11,7 +11,7 @@ services:
     networks:
       - default
     environment:
-      RABBIT_HOST: "rabbitmq"
+      DATABASE_DSN: pgsql://ecotone:secret@database:5432/ecotone
   database:
     image: postgres:12.1
     networks:

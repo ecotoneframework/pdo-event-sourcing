@@ -15,10 +15,15 @@ class EventMapper implements MessageFactory
     private array $eventToNameMapping;
     private array $nameToEventMapping;
 
-    public function __construct(array $eventToNameMapping, array $nameToEventMapping)
+    private function __construct(array $eventToNameMapping, array $nameToEventMapping)
     {
         $this->eventToNameMapping = $eventToNameMapping;
         $this->nameToEventMapping = $nameToEventMapping;
+    }
+
+    public static function createEmpty() : self
+    {
+        return new self([],[]);
     }
 
     public function createMessageFromArray(string $messageName, array $messageData): Message
