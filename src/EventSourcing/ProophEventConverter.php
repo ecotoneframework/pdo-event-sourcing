@@ -13,7 +13,7 @@ class ProophEventConverter implements MessageConverter
     {
         return [
             "uuid" => $domainMessage->uuid(),
-            "message_name" => $domainMessage->messageType(),
+            "message_name" => $domainMessage->messageName(),
             "created_at" => $domainMessage->createdAt(),
             "payload" => $domainMessage->payload(),
             "metadata" => $domainMessage->metadata()

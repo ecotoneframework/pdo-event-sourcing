@@ -35,7 +35,7 @@ class EventMapper implements MessageFactory
 
         return new ProophEvent(
             Uuid::fromString($messageData['uuid']),
-            new DateTimeImmutable($messageData['created_at'], new DateTimeZone('UTC')),
+            $messageData['created_at'],
             $messageData['payload'],
             $messageData['metadata'],
             $eventType

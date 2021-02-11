@@ -13,6 +13,7 @@ use Ecotone\Messaging\Handler\TypeDescriptor;
 use Ecotone\Messaging\MessageConverter\HeaderMapper;
 use Ecotone\Messaging\MessageHeaders;
 use Ecotone\Modelling\EventSourcedRepository;
+use Ecotone\Modelling\EventStream;
 use Prooph\EventStore\EventStore;
 use Prooph\EventStore\Exception\StreamNotFound;
 use Prooph\EventStore\Metadata\MetadataMatcher;
@@ -28,6 +29,9 @@ class ProophRepository implements EventSourcedRepository
     const POSTGRES_TABLE_NOT_FOUND_EXCEPTION = "42P01";
     const MYSQL_TABLE_NOT_FOUND_EXCEPTION = 1146;
     const MARIADB_TABLE_NOT_FOUND_EXCEPTION = 1932;
+    const AGGREGATE_VERSION = '_aggregate_version';
+    const AGGREGATE_TYPE = '_aggregate_type';
+    const AGGREGATE_ID = '_aggregate_id';
     private EventStore $eventStore;
     private StreamConfiguration $streamConfiguration;
     private HeaderMapper $headerMapper;
@@ -56,7 +60,7 @@ class ProophRepository implements EventSourcedRepository
         return in_array($aggregateClassName, $this->handledAggregateClassNames);
     }
 
-    public function findBy(string $aggregateClassName, array $identifiers): ?array
+    public function findBy(string $aggregateClassName, array $identifiers): EventStream
     {
         $aggregateId = reset($identifiers);
         $streamName = $this->streamConfiguration->generate($aggregateClassName, $aggregateId);
@@ -64,39 +68,53 @@ class ProophRepository implements EventSourcedRepository
         if ($this->streamConfiguration->isOneStreamPerAggregate()) {
             try {
                 $streamEvents = $this->eventStore->load($streamName, 1);
-            } catch (StreamNotFound) { return null; }
+            } catch (StreamNotFound) { return EventStream::createEmpty(); }
         } else {
             $metadataMatcher = new MetadataMatcher();
             $metadataMatcher = $metadataMatcher->withMetadataMatch(
-                '_aggregate_type',
+                self::AGGREGATE_TYPE,
                 Operator::EQUALS(),
                 $aggregateClassName
             );
             $metadataMatcher = $metadataMatcher->withMetadataMatch(
-                '_aggregate_id',
+                self::AGGREGATE_ID,
                 Operator::EQUALS(),
                 $aggregateId
             );
 
             try {
                 $streamEvents = $this->eventStore->load($streamName, 1, null, $metadataMatcher);
-            } catch (StreamNotFound) { return null; }
+            } catch (StreamNotFound) { return EventStream::createEmpty(); }
         }
 
         if (!$streamEvents->valid()) {
-            return null;
+            return EventStream::createEmpty();
         }
 
-        return $streamEvents;
+        $events = [];
+        $aggregateVersion = 0;
+        $sourcePHPType = TypeDescriptor::createArrayType();
+        $PHPMediaType = MediaType::createApplicationXPHP();
+        /** @var ProophEvent $event */
+        while ($event = $streamEvents->current()) {
+            $aggregateVersion = $event->metadata()[self::AGGREGATE_VERSION];
+            $events[] = $this->conversionService->convert($event->payload(), $sourcePHPType, $PHPMediaType, TypeDescriptor::create($event->messageName()), $PHPMediaType);
+
+            $streamEvents->next();
+        }
+
+        return EventStream::createWith($aggregateVersion, $events);
     }
 
-    public function save(array $identifiers, string $aggregateClassName, array $events, array $metadata, ?int $versionBeforeHandling): void
+    public function save(array $identifiers, string $aggregateClassName, array $events, array $metadata, int $versionBeforeHandling): void
     {
         $aggregateId = reset($identifiers);
         $streamName = $this->streamConfiguration->generate($aggregateClassName, $aggregateId);
 
         $proophEvents = [];
-        foreach ($events as $eventToConvert) {
+        $numberOfEvents = count($events);
+        for ($eventNumber = 0; $eventNumber < $numberOfEvents; $eventNumber++) {
+            $eventToConvert = $events[$eventNumber];
             $proophEvents[] = new ProophEvent(
                 Uuid::fromString($metadata[MessageHeaders::MESSAGE_ID]),
                 new DateTimeImmutable("@" . $metadata[MessageHeaders::TIMESTAMP], new DateTimeZone('UTC')),
@@ -104,9 +122,9 @@ class ProophRepository implements EventSourcedRepository
                 array_merge(
                     $this->headerMapper->mapFromMessageHeaders($metadata),
                     [
-                        '_aggregate_id' => $aggregateId,
-                        '_aggregate_type' => $aggregateClassName,
-                        '_aggregate_version' => $versionBeforeHandling // @TODO
+                        self::AGGREGATE_ID => $aggregateId,
+                        self::AGGREGATE_TYPE => $aggregateClassName,
+                        self::AGGREGATE_VERSION => $versionBeforeHandling + ($eventNumber + 1)
                     ]
                 ),
                 $this->eventMapper->mapEventToName($eventToConvert)
