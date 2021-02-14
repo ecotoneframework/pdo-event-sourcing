@@ -32,11 +32,15 @@ class ProophRepositoryBuilderTest extends EventSourcingMessagingTest
         $ticketId = Uuid::uuid4()->toString();
         $repository = $proophRepositoryBuilder->build(InMemoryChannelResolver::createEmpty(), $this->getReferenceSearchServiceWithConnection([
             EventMapper::class => EventMapper::createEmpty(),
-            ConversionService::REFERENCE_NAME => InMemoryConversionService::createWithConversion(MediaType::APPLICATION_X_PHP, TicketWasRegistered::class, MediaType::APPLICATION_X_PHP, TypeDescriptor::ARRAY, [
-                "ticketId" => $ticketId,
-                "assignedPerson" => "Johny",
-                "ticketType" => "standard"
-            ])
+            ConversionService::REFERENCE_NAME => InMemoryConversionService::createWithoutConversion()
+                ->registerConversion(MediaType::APPLICATION_X_PHP, TicketWasRegistered::class, MediaType::APPLICATION_X_PHP, TypeDescriptor::ARRAY, [
+                    "ticketId" => $ticketId,
+                    "assignedPerson" => "Johny",
+                    "ticketType" => "standard"
+                ])
+                ->registerConversion(MediaType::APPLICATION_X_PHP, TypeDescriptor::ARRAY, MediaType::APPLICATION_X_PHP, TicketWasRegistered::class, new TicketWasRegistered(
+                    $ticketId, "Johny", "standard"
+                ))
         ]));
 
         $ticketWasRegisteredEvent = new TicketWasRegistered($ticketId, "Johny", "standard");
