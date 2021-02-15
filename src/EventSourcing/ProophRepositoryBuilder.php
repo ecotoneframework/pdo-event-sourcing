@@ -6,7 +6,7 @@ namespace Ecotone\EventSourcing;
 
 use Doctrine\DBAL\Driver\PDOConnection;
 use Ecotone\Dbal\DbalReconnectableConnectionFactory;
-use Ecotone\EventSourcing\StreamConfiguration\OneStreamPerAggregateConfiguration;
+use Ecotone\EventSourcing\StreamConfiguration\OneStreamPerAggregateInstanceConfiguration;
 use Ecotone\EventSourcing\StreamConfiguration\SingleStreamConfiguration;
 use Ecotone\Messaging\Conversion\ConversionService;
 use Ecotone\Messaging\Handler\ChannelResolver;
@@ -43,6 +43,7 @@ class ProophRepositoryBuilder implements RepositoryBuilder
     private bool $enableWriteLockStrategy = false;
     private string $eventStreamTable = ProophRepository::STREAM_TABLE;
     private string $connectionReferenceName;
+    private array $aggregateClassToStreamName = [];
 
     private function __construct(string $connectionReferenceName)
     {
@@ -75,6 +76,13 @@ class ProophRepositoryBuilder implements RepositoryBuilder
     public function withMetadataMapper(string $headerMapper): self
     {
         $this->headerMapper = explode(",", $headerMapper);
+
+        return $this;
+    }
+
+    public function withAggregateClassToStreamMapping(array $aggregateClassToStreamName) : static
+    {
+        $this->aggregateClassToStreamName = $aggregateClassToStreamName;
 
         return $this;
     }
@@ -138,11 +146,11 @@ class ProophRepositoryBuilder implements RepositoryBuilder
             $this->eventStreamTable,
             $this->handledAggregateClassNames,
             $eventStore,
-            $this->streamPersistenceStrategy === self::SINGLE_STREAM_PERSISTENCE ? new SingleStreamConfiguration($this->eventStreamTable) : new OneStreamPerAggregateConfiguration(),
             $headerMapper,
             $referenceSearchService->get(EventMapper::class),
             $conversionService,
-            $connectionFactory->getConnection()
+            $connectionFactory->getConnection(),
+            []
         );
     }
 

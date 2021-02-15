@@ -9,6 +9,7 @@ use Doctrine\DBAL\Driver\PDOConnection;
 use Ecotone\EventSourcing\StreamConfiguration\SingleStreamConfiguration;
 use Ecotone\Messaging\Conversion\ConversionService;
 use Ecotone\Messaging\Conversion\MediaType;
+use Ecotone\Messaging\Handler\ClassDefinition;
 use Ecotone\Messaging\Handler\TypeDescriptor;
 use Ecotone\Messaging\MessageConverter\HeaderMapper;
 use Ecotone\Messaging\MessageHeaders;
@@ -19,6 +20,7 @@ use Prooph\EventStore\Exception\StreamNotFound;
 use Prooph\EventStore\Metadata\MetadataMatcher;
 use Prooph\EventStore\Metadata\Operator;
 use Prooph\EventStore\Stream;
+use Prooph\EventStore\StreamName;
 use Ramsey\Uuid\Uuid;
 
 class ProophRepository implements EventSourcedRepository
@@ -33,7 +35,6 @@ class ProophRepository implements EventSourcedRepository
     const AGGREGATE_TYPE = '_aggregate_type';
     const AGGREGATE_ID = '_aggregate_id';
     private EventStore $eventStore;
-    private StreamConfiguration $streamConfiguration;
     private HeaderMapper $headerMapper;
     private array $handledAggregateClassNames;
     private EventMapper $eventMapper;
@@ -41,18 +42,19 @@ class ProophRepository implements EventSourcedRepository
     private Connection $connection;
     private string $eventStoreType;
     private string $eventStreamTable;
+    private array $aggregateClassToStreamName;
 
-    public function __construct(string $eventStoreType, string $eventStreamTable, array $handledAggregateClassNames, EventStore $eventStore, StreamConfiguration $streamConfiguration, HeaderMapper $headerMapper, EventMapper $eventMapper, ConversionService $conversionService, Connection $connection)
+    public function __construct(string $eventStoreType, string $eventStreamTable, array $handledAggregateClassNames, EventStore $eventStore, HeaderMapper $headerMapper, EventMapper $eventMapper, ConversionService $conversionService, Connection $connection, array $aggregateClassStreamNames)
     {
         $this->eventStoreType = $eventStoreType;
         $this->eventStore = $eventStore;
-        $this->streamConfiguration = $streamConfiguration;
         $this->headerMapper = $headerMapper;
         $this->handledAggregateClassNames = $handledAggregateClassNames;
         $this->eventMapper = $eventMapper;
         $this->conversionService = $conversionService;
         $this->connection = $connection;
         $this->eventStreamTable = $eventStreamTable;
+        $this->aggregateClassToStreamName = $aggregateClassStreamNames;
     }
 
     public function canHandle(string $aggregateClassName): bool
@@ -63,29 +65,23 @@ class ProophRepository implements EventSourcedRepository
     public function findBy(string $aggregateClassName, array $identifiers): EventStream
     {
         $aggregateId = reset($identifiers);
-        $streamName = $this->streamConfiguration->generate($aggregateClassName, $aggregateId);
+        $streamName = $this->getStreamName($aggregateClassName, $aggregateId);
 
-        if ($this->streamConfiguration->isOneStreamPerAggregate()) {
-            try {
-                $streamEvents = $this->eventStore->load($streamName, 1);
-            } catch (StreamNotFound) { return EventStream::createEmpty(); }
-        } else {
-            $metadataMatcher = new MetadataMatcher();
-            $metadataMatcher = $metadataMatcher->withMetadataMatch(
-                self::AGGREGATE_TYPE,
-                Operator::EQUALS(),
-                $aggregateClassName
-            );
-            $metadataMatcher = $metadataMatcher->withMetadataMatch(
-                self::AGGREGATE_ID,
-                Operator::EQUALS(),
-                $aggregateId
-            );
+        $metadataMatcher = new MetadataMatcher();
+        $metadataMatcher = $metadataMatcher->withMetadataMatch(
+            self::AGGREGATE_TYPE,
+            Operator::EQUALS(),
+            $aggregateClassName
+        );
+        $metadataMatcher = $metadataMatcher->withMetadataMatch(
+            self::AGGREGATE_ID,
+            Operator::EQUALS(),
+            $aggregateId
+        );
 
-            try {
-                $streamEvents = $this->eventStore->load($streamName, 1, null, $metadataMatcher);
-            } catch (StreamNotFound) { return EventStream::createEmpty(); }
-        }
+        try {
+            $streamEvents = $this->eventStore->load($streamName, 1, null, $metadataMatcher);
+        } catch (StreamNotFound) { return EventStream::createEmpty(); }
 
         if (!$streamEvents->valid()) {
             return EventStream::createEmpty();
@@ -109,7 +105,7 @@ class ProophRepository implements EventSourcedRepository
     public function save(array $identifiers, string $aggregateClassName, array $events, array $metadata, int $versionBeforeHandling): void
     {
         $aggregateId = reset($identifiers);
-        $streamName = $this->streamConfiguration->generate($aggregateClassName, $aggregateId);
+        $streamName = $this->getStreamName($aggregateClassName, $aggregateId);
 
         $proophEvents = [];
         $numberOfEvents = count($events);
@@ -255,5 +251,15 @@ CREATE TABLE projections (
 );
 SQL
         );
+    }
+
+    private function getStreamName(string $aggregateClassName, mixed $aggregateId): StreamName
+    {
+        $prefix = $aggregateClassName;
+        if (array_key_exists($aggregateClassName, $this->aggregateClassToStreamName)) {
+            $prefix =  $this->aggregateClassToStreamName[$aggregateClassName];
+        }
+
+        return new StreamName($prefix . "-" . $aggregateId);
     }
 }
