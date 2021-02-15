@@ -2,6 +2,7 @@
 
 namespace Test\Ecotone\EventSourcing\Fixture\Ticket;
 
+use Ecotone\EventSourcing\Attribute\StreamName;
 use Ecotone\Modelling\Attribute\Aggregate;
 use Ecotone\Modelling\Attribute\AggregateFactory;
 use Ecotone\Modelling\Attribute\AggregateIdentifier;
@@ -13,13 +14,13 @@ use Test\Ecotone\EventSourcing\Fixture\Ticket\Event\TicketWasRegistered;
 use Test\Ecotone\Modelling\Fixture\InterceptedCommandAggregate\EventWasLogged;
 
 #[Aggregate]
+#[StreamName("ticket_stream")]
 class Ticket
 {
     #[AggregateIdentifier]
     private string $ticketId;
     private string $assignedPerson;
     private string $ticketType;
-    private bool $isDone;
 
     private function __construct() {}
 
@@ -55,7 +56,6 @@ class Ticket
         $this->ticketId       = $event->getTicketId();
         $this->assignedPerson = $event->getAssignedPerson();
         $this->ticketType     = $event->getTicketType();
-        $this->isDone = false;
     }
 
     private function applyAssignedPersonWasChanged(AssignedPersonWasChanged $event) : void

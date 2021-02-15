@@ -20,33 +20,26 @@ use Test\Ecotone\EventSourcing\Fixture\Ticket\Ticket;
 
 class ProophRepositoryBuilderTest extends EventSourcingMessagingTest
 {
-    public function TODOD_test_throwing_exception_if_aggregate_has_no_version_defined()
-    {
-
-    }
-
     public function test_storing_and_retrieving()
     {
         $proophRepositoryBuilder = ProophRepositoryBuilder::create();
 
         $ticketId = Uuid::uuid4()->toString();
         $ticketWasRegisteredEvent = new TicketWasRegistered($ticketId, "Johny", "standard");
+        $ticketWasRegisteredEventAsArray = [
+            "ticketId" => $ticketId,
+            "assignedPerson" => "Johny",
+            "ticketType" => "standard"
+        ];
+
         $repository = $proophRepositoryBuilder->build(InMemoryChannelResolver::createEmpty(), $this->getReferenceSearchServiceWithConnection([
             EventMapper::class => EventMapper::createEmpty(),
             ConversionService::REFERENCE_NAME => InMemoryConversionService::createWithoutConversion()
-                ->registerConversion(MediaType::APPLICATION_X_PHP, TicketWasRegistered::class, MediaType::APPLICATION_X_PHP, TypeDescriptor::ARRAY, [
-                    "ticketId" => $ticketId,
-                    "assignedPerson" => "Johny",
-                    "ticketType" => "standard"
-                ])
-                ->registerConversion(MediaType::APPLICATION_X_PHP, TypeDescriptor::ARRAY, MediaType::APPLICATION_X_PHP, TicketWasRegistered::class,
-                    $ticketWasRegisteredEvent
-                )
+                ->registerInPHPConversion($ticketWasRegisteredEvent, $ticketWasRegisteredEventAsArray)
+                ->registerInPHPConversion($ticketWasRegisteredEventAsArray, $ticketWasRegisteredEvent)
         ]));
 
-        $repository->save(["ticketId"=> $ticketId], Ticket::class, [
-            $ticketWasRegisteredEvent
-        ], [
+        $repository->save(["ticketId"=> $ticketId], Ticket::class, [$ticketWasRegisteredEvent], [
             MessageHeaders::MESSAGE_ID => Uuid::uuid4()->toString(),
             MessageHeaders::TIMESTAMP => 1610285647
         ], 0);
@@ -54,6 +47,55 @@ class ProophRepositoryBuilderTest extends EventSourcingMessagingTest
         $this->assertEquals(
             EventStream::createWith(1, [$ticketWasRegisteredEvent]),
             $repository->findBy(Ticket::class, ["ticketId"=> $ticketId])
+        );
+    }
+
+    public function test_having_two_streams_for_difference_instances_of_same_aggregate()
+    {
+        $proophRepositoryBuilder = ProophRepositoryBuilder::create();
+
+        $firstTicketAggregate = Uuid::uuid4()->toString();
+        $secondTicketAggregate = Uuid::uuid4()->toString();
+        $firstTicketWasRegisteredEvent = new TicketWasRegistered($firstTicketAggregate, "Johny", "standard");
+        $firstTicketWasRegisteredEventAsArray = [
+            "ticketId" => $firstTicketAggregate,
+            "assignedPerson" => "Johny",
+            "ticketType" => "standard"
+        ];
+        $secondTicketWasRegisteredEvent = new TicketWasRegistered($secondTicketAggregate, "Johny", "standard");
+        $secondTicketWasRegisteredEventAsArray = [
+            "ticketId" => $secondTicketAggregate,
+            "assignedPerson" => "Johny",
+            "ticketType" => "standard"
+        ];
+
+        $repository = $proophRepositoryBuilder->build(InMemoryChannelResolver::createEmpty(), $this->getReferenceSearchServiceWithConnection([
+            EventMapper::class => EventMapper::createEmpty(),
+            ConversionService::REFERENCE_NAME => InMemoryConversionService::createWithoutConversion()
+                ->registerInPHPConversion($firstTicketWasRegisteredEvent, $firstTicketWasRegisteredEventAsArray)
+                ->registerInPHPConversion($firstTicketWasRegisteredEventAsArray, $firstTicketWasRegisteredEvent)
+                ->registerInPHPConversion($secondTicketWasRegisteredEvent, $secondTicketWasRegisteredEventAsArray)
+                ->registerInPHPConversion($secondTicketWasRegisteredEventAsArray, $secondTicketWasRegisteredEvent)
+        ]));
+
+        $repository->save(["ticketId"=> $firstTicketAggregate], Ticket::class, [$firstTicketWasRegisteredEvent], [
+            MessageHeaders::MESSAGE_ID => Uuid::uuid4()->toString(),
+            MessageHeaders::TIMESTAMP => 1610285647
+        ], 0);
+
+        $repository->save(["ticketId"=> $secondTicketAggregate], Ticket::class, [$secondTicketWasRegisteredEvent], [
+            MessageHeaders::MESSAGE_ID => Uuid::uuid4()->toString(),
+            MessageHeaders::TIMESTAMP => 1610285647
+        ], 0);
+
+        $this->assertEquals(
+            EventStream::createWith(1, [$firstTicketWasRegisteredEvent]),
+            $repository->findBy(Ticket::class, ["ticketId"=> $firstTicketAggregate])
+        );
+
+        $this->assertEquals(
+            EventStream::createWith(1, [$secondTicketWasRegisteredEvent]),
+            $repository->findBy(Ticket::class, ["ticketId"=> $secondTicketAggregate])
         );
     }
 }

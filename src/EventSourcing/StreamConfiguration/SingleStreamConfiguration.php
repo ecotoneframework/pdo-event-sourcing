@@ -23,6 +23,6 @@ class SingleStreamConfiguration implements StreamConfiguration
 
     public function isOneStreamPerAggregate(): bool
     {
-        return false;
+        return true;
     }
 }

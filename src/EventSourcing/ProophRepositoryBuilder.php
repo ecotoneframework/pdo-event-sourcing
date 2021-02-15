@@ -35,7 +35,7 @@ class ProophRepositoryBuilder implements RepositoryBuilder
     private const AGGREGATE_STREAM_PERSISTENCE = "aggregate";
 
     private ProophEventConverter $eventConverter;
-    private string $streamPersistenceStrategy = self::SINGLE_STREAM_PERSISTENCE;
+    private string $streamPersistenceStrategy = self::AGGREGATE_STREAM_PERSISTENCE;
     /** @var int How many event should we returned on one call */
     private int $loadBatchSize = 1000;
     private array $handledAggregateClassNames = [];
@@ -63,20 +63,6 @@ class ProophRepositoryBuilder implements RepositoryBuilder
     public function withAggregateClassesToHandle(array $aggregateClassesToHandle) : self
     {
         $this->handledAggregateClassNames = $aggregateClassesToHandle;
-
-        return $this;
-    }
-
-    public function withSingleStreamPersistenceStrategy() : self
-    {
-        $this->streamPersistenceStrategy = self::SINGLE_STREAM_PERSISTENCE;
-
-        return $this;
-    }
-
-    public function withOneStreamPerAggregate() : self
-    {
-        $this->streamPersistenceStrategy = self::AGGREGATE_STREAM_PERSISTENCE;
 
         return $this;
     }
