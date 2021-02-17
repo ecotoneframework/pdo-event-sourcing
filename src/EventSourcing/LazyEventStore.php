@@ -26,6 +26,9 @@ use Prooph\EventStore\StreamName;
 
 class LazyEventStore implements PdoEventStore
 {
+    const DEFAULT_STREAM_TABLE = "event_streams";
+    const DEFAULT_PROJECTIONS_TABLE = "projections";
+
     const EVENT_STORE_TYPE_MYSQL = "mysql";
     const EVENT_STORE_TYPE_POSTGRES = "postgres";
     const EVENT_STORE_TYPE_MARIADB = "mariadb";
@@ -42,9 +45,13 @@ class LazyEventStore implements PdoEventStore
     private MessageFactory $messageFactory;
     private MessageConverter $messageConverter;
     private int $eventLoadBatchSize;
+    private string $projectionsTable;
+    private bool $requireInitialization;
+    private array $ensuredExistingStreams = [];
 
-    public function __construct(MessageFactory $messageFactory, MessageConverter $messageConverter, ReferenceSearchService $referenceSearchService, string $connectionReferenceName, string $streamPersistenceStrategy, bool $enableWriteLockStrategy, string $eventStreamTable, int $eventLoadBatchSize)
+    public function __construct(bool $initializeTables, MessageFactory $messageFactory, MessageConverter $messageConverter, ReferenceSearchService $referenceSearchService, string $connectionReferenceName, string $streamPersistenceStrategy, bool $enableWriteLockStrategy, string $eventStreamTable, string $projectionsTable, int $eventLoadBatchSize)
     {
+        $this->requireInitialization = $initializeTables;
         $this->referenceSearchService = $referenceSearchService;
         $this->connectionReferenceName = $connectionReferenceName;
         $this->streamPersistenceStrategy = $streamPersistenceStrategy;
@@ -53,11 +60,12 @@ class LazyEventStore implements PdoEventStore
         $this->messageFactory = $messageFactory;
         $this->eventLoadBatchSize = $eventLoadBatchSize;
         $this->messageConverter = $messageConverter;
+        $this->projectionsTable = $projectionsTable;
     }
 
     public function fetchStreamMetadata(StreamName $streamName): array
     {
-        return $this->fetchStreamMetadata($streamName);
+        return $this->getEventStore()->fetchStreamMetadata($streamName);
     }
 
     public function hasStream(StreamName $streamName): bool
@@ -102,17 +110,52 @@ class LazyEventStore implements PdoEventStore
 
     public function create(Stream $stream): void
     {
+        $this->prepareEventStore();
+
         $this->getEventStore()->create($stream);
+        $this->ensuredExistingStreams[$stream->streamName()->toString()] = true;
     }
 
     public function appendTo(StreamName $streamName, Iterator $streamEvents): void
     {
-        $this->getEventStore()->appendTo($streamName, $streamEvents);
+        $this->prepareEventStore();
+
+        if (!array_key_exists($streamName->toString(), $this->ensuredExistingStreams) && !$this->hasStream($streamName)) {
+            $this->create(new Stream($streamName, $streamEvents, []));
+        }else {
+            $this->getEventStore()->appendTo($streamName, $streamEvents);
+        }
     }
 
     public function delete(StreamName $streamName): void
     {
         $this->getEventStore()->delete($streamName);
+        unset($this->ensuredExistingStreams[$streamName->toString()]);
+    }
+
+    private function prepareEventStore() : void
+    {
+        if (!$this->requireInitialization) {
+            return;
+        }
+
+        $sm = $this->getConnection()->getSchemaManager();
+        if (!$sm->tablesExist([$this->eventStreamTable])) {
+            match ($this->getEventStoreType()) {
+                self::EVENT_STORE_TYPE_POSTGRES => $this->createPostgresEventStreamTable(),
+                self::EVENT_STORE_TYPE_MARIADB => $this->createMariadbEventStreamTable(),
+                self::EVENT_STORE_TYPE_MYSQL => $this->createMysqlEventStreamTable()
+            };
+        }
+        if (!$sm->tablesExist([$this->projectionsTable])) {
+            match ($this->getEventStoreType()) {
+                self::EVENT_STORE_TYPE_POSTGRES => $this->createPostgresProjectionTable(),
+                self::EVENT_STORE_TYPE_MARIADB => $this->createMariadbProjectionTable(),
+                self::EVENT_STORE_TYPE_MYSQL => $this->createMysqlProjectionTable()
+            };
+        }
+
+        $this->requireInitialization = false;
     }
 
     private function getEventStore() : PdoEventStore
@@ -209,5 +252,107 @@ class LazyEventStore implements PdoEventStore
     private function getWrappedConnection(): PDOConnection
     {
         return $this->getConnection()->getWrappedConnection();
+    }
+
+    private function createMysqlEventStreamTable() : void
+    {
+        $this->getConnection()->executeStatement(<<<SQL
+    CREATE TABLE `event_streams` (
+  `no` BIGINT(20) NOT NULL AUTO_INCREMENT,
+  `real_stream_name` VARCHAR(150) NOT NULL,
+  `stream_name` CHAR(41) NOT NULL,
+  `metadata` JSON,
+  `category` VARCHAR(150),
+  PRIMARY KEY (`no`),
+  UNIQUE KEY `ix_rsn` (`real_stream_name`),
+  KEY `ix_cat` (`category`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
+SQL);
+    }
+
+    private function createMariadbEventStreamTable() : void
+    {
+        $this->getConnection()->executeStatement(<<<SQL
+CREATE TABLE `event_streams` (
+    `no` BIGINT(20) NOT NULL AUTO_INCREMENT,
+    `real_stream_name` VARCHAR(150) NOT NULL,
+    `stream_name` CHAR(41) NOT NULL,
+    `metadata` LONGTEXT NOT NULL,
+    `category` VARCHAR(150),
+    CHECK (`metadata` IS NOT NULL OR JSON_VALID(`metadata`)),
+    PRIMARY KEY (`no`),
+    UNIQUE KEY `ix_rsn` (`real_stream_name`),
+    KEY `ix_cat` (`category`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
+SQL);
+    }
+
+    private function createPostgresEventStreamTable() : void
+    {
+        $this->getConnection()->executeStatement(<<<SQL
+CREATE TABLE event_streams (
+  no BIGSERIAL,
+  real_stream_name VARCHAR(150) NOT NULL,
+  stream_name CHAR(41) NOT NULL,
+  metadata JSONB,
+  category VARCHAR(150),
+  PRIMARY KEY (no),
+  UNIQUE (stream_name)
+);
+CREATE INDEX on event_streams (category);
+SQL);
+    }
+
+    private function createMysqlProjectionTable(): void
+    {
+        $this->getConnection()->executeStatement(<<<SQL
+CREATE TABLE `projections` (
+  `no` BIGINT(20) NOT NULL AUTO_INCREMENT,
+  `name` VARCHAR(150) NOT NULL,
+  `position` JSON,
+  `state` JSON,
+  `status` VARCHAR(28) NOT NULL,
+  `locked_until` CHAR(26),
+  PRIMARY KEY (`no`),
+  UNIQUE KEY `ix_name` (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
+SQL
+        );
+    }
+
+    private function createMariadbProjectionTable(): void
+    {
+        $this->getConnection()->executeStatement(<<<SQL
+CREATE TABLE `projections` (
+  `no` BIGINT(20) NOT NULL AUTO_INCREMENT,
+  `name` VARCHAR(150) NOT NULL,
+  `position` LONGTEXT,
+  `state` LONGTEXT,
+  `status` VARCHAR(28) NOT NULL,
+  `locked_until` CHAR(26),
+  CHECK (`position` IS NULL OR JSON_VALID(`position`)),
+  CHECK (`state` IS NULL OR JSON_VALID(`state`)),
+  PRIMARY KEY (`no`),
+  UNIQUE KEY `ix_name` (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
+SQL
+        );
+    }
+
+    private function createPostgresProjectionTable(): void
+    {
+        $this->getConnection()->executeStatement(<<<SQL
+CREATE TABLE projections (
+  no BIGSERIAL,
+  name VARCHAR(150) NOT NULL,
+  position JSONB,
+  state JSONB,
+  status VARCHAR(28) NOT NULL,
+  locked_until CHAR(26),
+  PRIMARY KEY (no),
+  UNIQUE (name)
+);
+SQL
+        );
     }
 }

@@ -13,6 +13,6 @@ class MessagingConfiguration
     #[ServiceContext]
     public function repository() : RepositoryBuilder
     {
-        return ProophRepositoryBuilder::create(ProophRepositoryBuilder::EVENT_STORE_TYPE_POSTGRES);
+        return ProophRepositoryBuilder::create();
     }
 }

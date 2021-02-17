@@ -27,21 +27,15 @@ use Prooph\EventStore\Pdo\WriteLockStrategy\PostgresAdvisoryLockStrategy;
 
 class ProophRepositoryBuilder implements RepositoryBuilder
 {
-    const EVENT_STORE_TYPE_MYSQL = "mysql";
-    const EVENT_STORE_TYPE_POSTGRES = "postgres";
-    const EVENT_STORE_TYPE_MARIADB = "mariadb";
-
-    private const SINGLE_STREAM_PERSISTENCE = "single";
-    private const AGGREGATE_STREAM_PERSISTENCE = "aggregate";
-
+    private bool $initializeTablesOnStart = true;
     private ProophEventConverter $eventConverter;
-    private string $streamPersistenceStrategy = self::AGGREGATE_STREAM_PERSISTENCE;
     /** @var int How many event should we returned on one call */
     private int $loadBatchSize = 1000;
     private array $handledAggregateClassNames = [];
     private array $headerMapper = [];
     private bool $enableWriteLockStrategy = false;
-    private string $eventStreamTable = ProophRepository::STREAM_TABLE;
+    private string $eventStreamTable = LazyEventStore::DEFAULT_STREAM_TABLE;
+    private string $projectionsTable = LazyEventStore::DEFAULT_PROJECTIONS_TABLE;
     private string $connectionReferenceName;
     private array $aggregateClassToStreamName = [];
 
@@ -54,6 +48,13 @@ class ProophRepositoryBuilder implements RepositoryBuilder
     public static function create(string $connectionReferenceName = DbalConnectionFactory::class): static
     {
         return new static($connectionReferenceName);
+    }
+
+    public function withTableInitializationOnStartup(bool $initialize) : static
+    {
+        $this->initializeTablesOnStart = $initialize;
+
+        return $this;
     }
 
     public function canHandle(string $aggregateClassName): bool
@@ -97,6 +98,7 @@ class ProophRepositoryBuilder implements RepositoryBuilder
         }
 
         $eventStore = new LazyEventStore(
+            $this->initializeTablesOnStart,
             $referenceSearchService->get(EventMapper::class),
             $this->eventConverter,
             $referenceSearchService,
@@ -104,6 +106,7 @@ class ProophRepositoryBuilder implements RepositoryBuilder
             LazyEventStore::AGGREGATE_STREAM_PERSISTENCE,
             $this->enableWriteLockStrategy,
             $this->eventStreamTable,
+            $this->projectionsTable,
             $this->loadBatchSize
         );
 
@@ -116,29 +119,5 @@ class ProophRepositoryBuilder implements RepositoryBuilder
             $conversionService,
             []
         );
-    }
-
-    private function getMysqlPersistenceStrategy(): PersistenceStrategy
-    {
-        return match ($this->streamPersistenceStrategy) {
-            self::AGGREGATE_STREAM_PERSISTENCE => new PersistenceStrategy\MySqlAggregateStreamStrategy($this->eventConverter),
-            self::SINGLE_STREAM_PERSISTENCE => new PersistenceStrategy\MySqlSingleStreamStrategy($this->eventConverter)
-        };
-    }
-
-    private function getMeriaPersistenceStrategy(): PersistenceStrategy
-    {
-        return match ($this->streamPersistenceStrategy) {
-            self::AGGREGATE_STREAM_PERSISTENCE => new PersistenceStrategy\MariaDbAggregateStreamStrategy($this->eventConverter),
-            self::SINGLE_STREAM_PERSISTENCE => new PersistenceStrategy\MariaDbSingleStreamStrategy($this->eventConverter)
-        };
-    }
-
-    private function getPostgresPersistenceStrategy(): PersistenceStrategy
-    {
-        return match ($this->streamPersistenceStrategy) {
-            self::AGGREGATE_STREAM_PERSISTENCE => new PersistenceStrategy\PostgresAggregateStreamStrategy($this->eventConverter),
-            self::SINGLE_STREAM_PERSISTENCE => new PersistenceStrategy\PostgresSingleStreamStrategy($this->eventConverter)
-        };
     }
 }
