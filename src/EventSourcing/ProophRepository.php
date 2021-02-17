@@ -34,25 +34,21 @@ class ProophRepository implements EventSourcedRepository
     const AGGREGATE_VERSION = '_aggregate_version';
     const AGGREGATE_TYPE = '_aggregate_type';
     const AGGREGATE_ID = '_aggregate_id';
-    private EventStore $eventStore;
+    private LazyEventStore $eventStore;
     private HeaderMapper $headerMapper;
     private array $handledAggregateClassNames;
     private EventMapper $eventMapper;
     private ConversionService $conversionService;
-    private Connection $connection;
-    private string $eventStoreType;
     private string $eventStreamTable;
     private array $aggregateClassToStreamName;
 
-    public function __construct(string $eventStoreType, string $eventStreamTable, array $handledAggregateClassNames, EventStore $eventStore, HeaderMapper $headerMapper, EventMapper $eventMapper, ConversionService $conversionService, Connection $connection, array $aggregateClassStreamNames)
+    public function __construct(string $eventStreamTable, array $handledAggregateClassNames, LazyEventStore $eventStore, HeaderMapper $headerMapper, EventMapper $eventMapper, ConversionService $conversionService, array $aggregateClassStreamNames)
     {
-        $this->eventStoreType = $eventStoreType;
         $this->eventStore = $eventStore;
         $this->headerMapper = $headerMapper;
         $this->handledAggregateClassNames = $handledAggregateClassNames;
         $this->eventMapper = $eventMapper;
         $this->conversionService = $conversionService;
-        $this->connection = $connection;
         $this->eventStreamTable = $eventStreamTable;
         $this->aggregateClassToStreamName = $aggregateClassStreamNames;
     }
@@ -128,16 +124,16 @@ class ProophRepository implements EventSourcedRepository
         }
 
 //        @TDDO optimize table exists and hasStream
-        $sm = $this->connection->getSchemaManager();
+        $sm = $this->eventStore->getConnection()->getSchemaManager();
         if (!$sm->tablesExist([$this->eventStreamTable])) {
-            match ($this->eventStoreType) {
+            match ($this->eventStore->getEventStoreType()) {
                 ProophRepositoryBuilder::EVENT_STORE_TYPE_POSTGRES => $this->createPostgresEventStreamTable(),
                 ProophRepositoryBuilder::EVENT_STORE_TYPE_MARIADB => $this->createMariadbEventStreamTable(),
                 ProophRepositoryBuilder::EVENT_STORE_TYPE_MYSQL => $this->createMysqlEventStreamTable()
             };
         }
         if (!$sm->tablesExist([self::PROJECTIONS_TABLE])) {
-            match ($this->eventStoreType) {
+            match ($this->eventStore->getEventStoreType()) {
                 ProophRepositoryBuilder::EVENT_STORE_TYPE_POSTGRES => $this->createPostgresProjectionTable(),
                 ProophRepositoryBuilder::EVENT_STORE_TYPE_MARIADB => $this->createMariadbProjectionTable(),
                 ProophRepositoryBuilder::EVENT_STORE_TYPE_MYSQL => $this->createMysqlProjectionTable()
@@ -153,7 +149,7 @@ class ProophRepository implements EventSourcedRepository
 
     private function createMysqlEventStreamTable() : void
     {
-        $this->connection->executeStatement(<<<SQL
+        $this->eventStore->getConnection()->executeStatement(<<<SQL
     CREATE TABLE `event_streams` (
   `no` BIGINT(20) NOT NULL AUTO_INCREMENT,
   `real_stream_name` VARCHAR(150) NOT NULL,
@@ -169,7 +165,7 @@ SQL);
 
     private function createMariadbEventStreamTable() : void
     {
-        $this->connection->executeStatement(<<<SQL
+        $this->eventStore->getConnection()->executeStatement(<<<SQL
 CREATE TABLE `event_streams` (
     `no` BIGINT(20) NOT NULL AUTO_INCREMENT,
     `real_stream_name` VARCHAR(150) NOT NULL,
@@ -186,7 +182,7 @@ SQL);
 
     private function createPostgresEventStreamTable() : void
     {
-        $this->connection->executeStatement(<<<SQL
+        $this->eventStore->getConnection()->executeStatement(<<<SQL
 CREATE TABLE event_streams (
   no BIGSERIAL,
   real_stream_name VARCHAR(150) NOT NULL,
@@ -202,7 +198,7 @@ SQL);
 
     private function createMysqlProjectionTable(): void
     {
-        $this->connection->executeStatement(<<<SQL
+        $this->eventStore->getConnection()->executeStatement(<<<SQL
 CREATE TABLE `projections` (
   `no` BIGINT(20) NOT NULL AUTO_INCREMENT,
   `name` VARCHAR(150) NOT NULL,
@@ -219,7 +215,7 @@ SQL
 
     private function createMariadbProjectionTable(): void
     {
-        $this->connection->executeStatement(<<<SQL
+        $this->eventStore->getConnection()->executeStatement(<<<SQL
 CREATE TABLE `projections` (
   `no` BIGINT(20) NOT NULL AUTO_INCREMENT,
   `name` VARCHAR(150) NOT NULL,
@@ -238,7 +234,7 @@ SQL
 
     private function createPostgresProjectionTable(): void
     {
-        $this->connection->executeStatement(<<<SQL
+        $this->eventStore->getConnection()->executeStatement(<<<SQL
 CREATE TABLE projections (
   no BIGSERIAL,
   name VARCHAR(150) NOT NULL,

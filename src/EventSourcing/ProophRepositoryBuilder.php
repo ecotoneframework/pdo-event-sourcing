@@ -96,60 +96,24 @@ class ProophRepositoryBuilder implements RepositoryBuilder
             $headerMapper = DefaultHeaderMapper::createWith($this->headerMapper, $this->headerMapper, $conversionService);
         }
 
-        $connectionFactory = new DbalReconnectableConnectionFactory($referenceSearchService->get($this->connectionReferenceName)); // what to do with connection. Require ecotone/dbal and do wrapper http://dan.doezema.com/2015/08/doctrine-2-pdo-object/?
-
-        /** @var PDOConnection $connection */
-        $connection = $connectionFactory->getConnection()->getWrappedConnection();
-
-        $eventStoreType = $connection->getAttribute(\PDO::ATTR_DRIVER_NAME);
-        if ($eventStoreType === self::EVENT_STORE_TYPE_MYSQL && str_contains($connection->getAttribute(\PDO::ATTR_SERVER_VERSION), "MariaDB")) {
-            $eventStoreType = self::EVENT_STORE_TYPE_MARIADB;
-        }
-        if ($eventStoreType === "pgsql") {
-            $eventStoreType = self::EVENT_STORE_TYPE_POSTGRES;
-        }
-
-        $persistenceStrategy = match ($eventStoreType) {
-            self::EVENT_STORE_TYPE_MYSQL => $this->getMysqlPersistenceStrategy(),
-            self::EVENT_STORE_TYPE_MARIADB => $this->getMeriaPersistenceStrategy(),
-            self::EVENT_STORE_TYPE_POSTGRES => $this->getPostgresPersistenceStrategy(),
-            default => throw new Exception('Unexpected match value ' . $eventStoreType)
-        };
-
-        $writeLockStrategy = new NoLockStrategy();
-        if ($this->enableWriteLockStrategy) {
-            $writeLockStrategy = match ($eventStoreType) {
-                self::EVENT_STORE_TYPE_MYSQL => new MysqlMetadataLockStrategy($connection),
-                self::EVENT_STORE_TYPE_MARIADB => new MariaDbMetadataLockStrategy($connection),
-                self::EVENT_STORE_TYPE_POSTGRES => new PostgresAdvisoryLockStrategy($connection)
-            };
-        }
-
-        $eventStoreClass = match ($eventStoreType) {
-            self::EVENT_STORE_TYPE_MYSQL => MySqlEventStore::class,
-            self::EVENT_STORE_TYPE_MARIADB => MariaDbEventStore::class,
-            self::EVENT_STORE_TYPE_POSTGRES => PostgresEventStore::class
-        };
-
-        $eventStore = new $eventStoreClass(
+        $eventStore = new LazyEventStore(
             $referenceSearchService->get(EventMapper::class),
-            $connection,
-            $persistenceStrategy,
-            $this->loadBatchSize,
+            $this->eventConverter,
+            $referenceSearchService,
+            $this->connectionReferenceName,
+            LazyEventStore::AGGREGATE_STREAM_PERSISTENCE,
+            $this->enableWriteLockStrategy,
             $this->eventStreamTable,
-            true,
-            $writeLockStrategy
+            $this->loadBatchSize
         );
 
         return new ProophRepository(
-            $eventStoreType,
             $this->eventStreamTable,
             $this->handledAggregateClassNames,
             $eventStore,
             $headerMapper,
             $referenceSearchService->get(EventMapper::class),
             $conversionService,
-            $connectionFactory->getConnection(),
             []
         );
     }
