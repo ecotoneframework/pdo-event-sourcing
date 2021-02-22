@@ -3,7 +3,8 @@
 
 namespace Test\Ecotone\EventSourcing\Fixture\Ticket\Projection;
 
-class TicketReadModel
+#[ProjectionApi("ticketList")]
+class TicketProjectionApi
 {
     #[ProjectionInitialization]
     public function initialization() : void

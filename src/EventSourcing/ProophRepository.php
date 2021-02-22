@@ -25,30 +25,21 @@ use Ramsey\Uuid\Uuid;
 
 class ProophRepository implements EventSourcedRepository
 {
-    const STREAM_TABLE = "event_streams";
-    const PROJECTIONS_TABLE = "projections";
-
-    const POSTGRES_TABLE_NOT_FOUND_EXCEPTION = "42P01";
-    const MYSQL_TABLE_NOT_FOUND_EXCEPTION = 1146;
-    const MARIADB_TABLE_NOT_FOUND_EXCEPTION = 1932;
     const AGGREGATE_VERSION = '_aggregate_version';
     const AGGREGATE_TYPE = '_aggregate_type';
     const AGGREGATE_ID = '_aggregate_id';
-    private LazyEventStore $eventStore;
+
     private HeaderMapper $headerMapper;
     private array $handledAggregateClassNames;
-    private EventMapper $eventMapper;
-    private ConversionService $conversionService;
     private string $eventStreamTable;
     private array $aggregateClassToStreamName;
+    private ProophEventStoreWrapper $eventStore;
 
-    public function __construct(string $eventStreamTable, array $handledAggregateClassNames, LazyEventStore $eventStore, HeaderMapper $headerMapper, EventMapper $eventMapper, ConversionService $conversionService, array $aggregateClassStreamNames)
+    public function __construct(ProophEventStoreWrapper $eventStore, string $eventStreamTable, array $handledAggregateClassNames, HeaderMapper $headerMapper, array $aggregateClassStreamNames)
     {
         $this->eventStore = $eventStore;
         $this->headerMapper = $headerMapper;
         $this->handledAggregateClassNames = $handledAggregateClassNames;
-        $this->eventMapper = $eventMapper;
-        $this->conversionService = $conversionService;
         $this->eventStreamTable = $eventStreamTable;
         $this->aggregateClassToStreamName = $aggregateClassStreamNames;
     }
@@ -79,23 +70,12 @@ class ProophRepository implements EventSourcedRepository
             $streamEvents = $this->eventStore->load($streamName, 1, null, $metadataMatcher);
         } catch (StreamNotFound) { return EventStream::createEmpty(); }
 
-        if (!$streamEvents->valid()) {
-            return EventStream::createEmpty();
-        }
-
-        $events = [];
         $aggregateVersion = 0;
-        $sourcePHPType = TypeDescriptor::createArrayType();
-        $PHPMediaType = MediaType::createApplicationXPHP();
-        /** @var ProophEvent $event */
-        while ($event = $streamEvents->current()) {
-            $aggregateVersion = $event->metadata()[self::AGGREGATE_VERSION];
-            $events[] = $this->conversionService->convert($event->payload(), $sourcePHPType, $PHPMediaType, TypeDescriptor::create($event->messageName()), $PHPMediaType);
-
-            $streamEvents->next();
+        if (!empty($streamEvents)) {
+            $aggregateVersion = $streamEvents[array_key_last($streamEvents)]->getMetadata()[self::AGGREGATE_VERSION];
         }
 
-        return EventStream::createWith($aggregateVersion, $events);
+        return EventStream::createWith($aggregateVersion, $streamEvents);
     }
 
     public function save(array $identifiers, string $aggregateClassName, array $events, array $metadata, int $versionBeforeHandling): void
@@ -103,27 +83,23 @@ class ProophRepository implements EventSourcedRepository
         $aggregateId = reset($identifiers);
         $streamName = $this->getStreamName($aggregateClassName, $aggregateId);
 
-        $proophEvents = [];
-        $numberOfEvents = count($events);
-        for ($eventNumber = 0; $eventNumber < $numberOfEvents; $eventNumber++) {
-            $eventToConvert = $events[$eventNumber];
-            $proophEvents[] = new ProophEvent(
-                Uuid::fromString($metadata[MessageHeaders::MESSAGE_ID]),
-                new DateTimeImmutable("@" . $metadata[MessageHeaders::TIMESTAMP], new DateTimeZone('UTC')),
-                $this->conversionService->convert($eventToConvert, TypeDescriptor::createFromVariable($eventToConvert), MediaType::createApplicationXPHP(), TypeDescriptor::createArrayType(), MediaType::createApplicationXPHP()),
+        $eventsWithMetadata = [];
+        $eventsCount = count($events);
+        for ($eventNumber = 1; $eventNumber <= $eventsCount; $eventNumber++) {
+            $event = $events[$eventNumber - 1];
+            $eventsWithMetadata[] = EventWithMetadata::create(
+                $event,
                 array_merge(
                     $this->headerMapper->mapFromMessageHeaders($metadata),
                     [
                         self::AGGREGATE_ID => $aggregateId,
                         self::AGGREGATE_TYPE => $aggregateClassName,
-                        self::AGGREGATE_VERSION => $versionBeforeHandling + ($eventNumber + 1)
+                        self::AGGREGATE_VERSION => $versionBeforeHandling + $eventNumber
                     ]
-                ),
-                $this->eventMapper->mapEventToName($eventToConvert)
+                )
             );
         }
-
-        $this->eventStore->appendTo($streamName, new \ArrayIterator($proophEvents));
+        $this->eventStore->appendTo($streamName, $eventsWithMetadata);
     }
 
     private function getStreamName(string $aggregateClassName, mixed $aggregateId): StreamName

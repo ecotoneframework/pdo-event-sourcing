@@ -44,10 +44,9 @@ class ProophRepositoryBuilderTest extends EventSourcingMessagingTest
             MessageHeaders::TIMESTAMP => 1610285647
         ], 0);
 
-        $this->assertEquals(
-            EventStream::createWith(1, [$ticketWasRegisteredEvent]),
-            $repository->findBy(Ticket::class, ["ticketId"=> $ticketId])
-        );
+        $resultStream = $repository->findBy(Ticket::class, ["ticketId" => $ticketId]);
+        $this->assertEquals(1, $resultStream->getAggregateVersion());
+        $this->assertEquals($ticketWasRegisteredEvent, $resultStream->getEvents()[0]->getEvent());
     }
 
     public function test_having_two_streams_for_difference_instances_of_same_aggregate()
@@ -88,14 +87,12 @@ class ProophRepositoryBuilderTest extends EventSourcingMessagingTest
             MessageHeaders::TIMESTAMP => 1610285647
         ], 0);
 
-        $this->assertEquals(
-            EventStream::createWith(1, [$firstTicketWasRegisteredEvent]),
-            $repository->findBy(Ticket::class, ["ticketId"=> $firstTicketAggregate])
-        );
+        $resultStream = $repository->findBy(Ticket::class, ["ticketId"=> $firstTicketAggregate]);
+        $this->assertEquals(1, $resultStream->getAggregateVersion());
+        $this->assertEquals($firstTicketWasRegisteredEvent, $resultStream->getEvents()[0]->getEvent());
 
-        $this->assertEquals(
-            EventStream::createWith(1, [$secondTicketWasRegisteredEvent]),
-            $repository->findBy(Ticket::class, ["ticketId"=> $secondTicketAggregate])
-        );
+        $resultStream = $repository->findBy(Ticket::class, ["ticketId"=> $secondTicketAggregate]);
+        $this->assertEquals(1, $resultStream->getAggregateVersion());
+        $this->assertEquals($secondTicketWasRegisteredEvent, $resultStream->getEvents()[0]->getEvent());
     }
 }

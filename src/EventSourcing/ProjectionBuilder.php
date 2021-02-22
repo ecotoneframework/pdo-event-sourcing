@@ -4,35 +4,22 @@
 namespace Ecotone\EventSourcing;
 
 
-use Doctrine\DBAL\Driver\PDOConnection;
-use Ecotone\Dbal\DbalReconnectableConnectionFactory;
-use Ecotone\EventSourcing\StreamConfiguration\OneStreamPerAggregateInstanceConfiguration;
-use Ecotone\EventSourcing\StreamConfiguration\SingleStreamConfiguration;
 use Ecotone\Messaging\Conversion\ConversionService;
 use Ecotone\Messaging\Handler\ChannelResolver;
 use Ecotone\Messaging\Handler\ReferenceSearchService;
 use Ecotone\Messaging\MessageConverter\DefaultHeaderMapper;
 use Ecotone\Modelling\EventSourcedRepository;
-use Ecotone\Modelling\RepositoryBuilder;
 use Enqueue\Dbal\DbalConnectionFactory;
-use Exception;
-use Prooph\EventStore\Pdo\MariaDbEventStore;
-use Prooph\EventStore\Pdo\MySqlEventStore;
-use Prooph\EventStore\Pdo\PersistenceStrategy;
-use Prooph\EventStore\Pdo\PostgresEventStore;
-use Prooph\EventStore\Pdo\WriteLockStrategy\MariaDbMetadataLockStrategy;
-use Prooph\EventStore\Pdo\WriteLockStrategy\MysqlMetadataLockStrategy;
-use Prooph\EventStore\Pdo\WriteLockStrategy\NoLockStrategy;
-use Prooph\EventStore\Pdo\WriteLockStrategy\PostgresAdvisoryLockStrategy;
 
-class ProophRepositoryBuilder implements RepositoryBuilder
+class ProjectionBuilder
 {
-    private bool $initializeTablesOnStart = LazyEventStore::INITIALIZE_ON_STARTUP;
+    private bool $initializeTablesOnStart = true;
+    private ProophEventConverter $eventConverter;
     /** @var int How many event should we returned on one call */
-    private int $loadBatchSize = LazyEventStore::LOAD_BATCH_SIZE;
+    private int $loadBatchSize = 1000;
     private array $handledAggregateClassNames = [];
     private array $headerMapper = [];
-    private bool $enableWriteLockStrategy = LazyEventStore::DEFAULT_ENABLE_WRITE_LOCK_STRATEGY;
+    private bool $enableWriteLockStrategy = false;
     private string $eventStreamTable = LazyEventStore::DEFAULT_STREAM_TABLE;
     private string $projectionsTable = LazyEventStore::DEFAULT_PROJECTIONS_TABLE;
     private string $connectionReferenceName;
@@ -41,9 +28,10 @@ class ProophRepositoryBuilder implements RepositoryBuilder
     private function __construct(string $connectionReferenceName)
     {
         $this->connectionReferenceName = $connectionReferenceName;
+        $this->eventConverter = new ProophEventConverter();
     }
 
-    public static function create(string $connectionReferenceName = LazyEventStore::DEFAULT_CONNECTION_FACTORY): static
+    public static function create(string $connectionReferenceName = DbalConnectionFactory::class): static
     {
         return new static($connectionReferenceName);
     }
@@ -98,6 +86,7 @@ class ProophRepositoryBuilder implements RepositoryBuilder
         $eventStore = new LazyEventStore(
             $this->initializeTablesOnStart,
             $referenceSearchService->get(EventMapper::class),
+            $this->eventConverter,
             $referenceSearchService,
             $this->connectionReferenceName,
             LazyEventStore::AGGREGATE_STREAM_PERSISTENCE,
@@ -108,10 +97,12 @@ class ProophRepositoryBuilder implements RepositoryBuilder
         );
 
         return new ProophRepository(
-            ProophEventStoreWrapper::prepare($eventStore, $conversionService, $referenceSearchService->get(EventMapper::class)),
             $this->eventStreamTable,
             $this->handledAggregateClassNames,
+            $eventStore,
             $headerMapper,
+            $referenceSearchService->get(EventMapper::class),
+            $conversionService,
             []
         );
     }

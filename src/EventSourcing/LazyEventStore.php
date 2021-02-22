@@ -6,11 +6,14 @@ namespace Ecotone\EventSourcing;
 
 use Doctrine\DBAL\Driver\PDOConnection;
 use Ecotone\Dbal\DbalReconnectableConnectionFactory;
+use Ecotone\Messaging\Handler\InMemoryReferenceSearchService;
 use Ecotone\Messaging\Handler\ReferenceSearchService;
 use Ecotone\Messaging\Support\InvalidArgumentException;
+use Enqueue\Dbal\DbalConnectionFactory;
 use Iterator;
 use Prooph\Common\Messaging\MessageConverter;
 use Prooph\Common\Messaging\MessageFactory;
+use Prooph\EventStore\EventStore;
 use Prooph\EventStore\Metadata\MetadataMatcher;
 use Prooph\EventStore\Pdo\MariaDbEventStore;
 use Prooph\EventStore\Pdo\MySqlEventStore;
@@ -26,6 +29,11 @@ use Prooph\EventStore\StreamName;
 
 class LazyEventStore implements PdoEventStore
 {
+    const DEFAULT_CONNECTION_FACTORY = DbalConnectionFactory::class;
+    const DEFAULT_ENABLE_WRITE_LOCK_STRATEGY = false;
+    const INITIALIZE_ON_STARTUP = true;
+    const LOAD_BATCH_SIZE = 1000;
+
     const DEFAULT_STREAM_TABLE = "event_streams";
     const DEFAULT_PROJECTIONS_TABLE = "projections";
 
@@ -49,7 +57,7 @@ class LazyEventStore implements PdoEventStore
     private bool $requireInitialization;
     private array $ensuredExistingStreams = [];
 
-    public function __construct(bool $initializeTables, MessageFactory $messageFactory, MessageConverter $messageConverter, ReferenceSearchService $referenceSearchService, string $connectionReferenceName, string $streamPersistenceStrategy, bool $enableWriteLockStrategy, string $eventStreamTable, string $projectionsTable, int $eventLoadBatchSize)
+    public function __construct(bool $initializeTables, MessageFactory $messageFactory, ReferenceSearchService $referenceSearchService, string $connectionReferenceName, string $streamPersistenceStrategy, bool $enableWriteLockStrategy, string $eventStreamTable, string $projectionsTable, int $eventLoadBatchSize)
     {
         $this->requireInitialization = $initializeTables;
         $this->referenceSearchService = $referenceSearchService;
@@ -59,8 +67,15 @@ class LazyEventStore implements PdoEventStore
         $this->eventStreamTable = $eventStreamTable;
         $this->messageFactory = $messageFactory;
         $this->eventLoadBatchSize = $eventLoadBatchSize;
-        $this->messageConverter = $messageConverter;
+        $this->messageConverter = new ProophEventConverter();
         $this->projectionsTable = $projectionsTable;
+    }
+
+    public static function startWithDefaults(DbalConnectionFactory $connectionFactory, string $streamPersistenceStrategy = self::AGGREGATE_STREAM_PERSISTENCE) : LazyEventStore
+    {
+        return new self(self::INITIALIZE_ON_STARTUP, EventMapper::createEmpty(), InMemoryReferenceSearchService::createWith([
+            DbalConnectionFactory::class => $connectionFactory
+        ]), DbalConnectionFactory::class, $streamPersistenceStrategy, self::DEFAULT_ENABLE_WRITE_LOCK_STRATEGY, self::DEFAULT_STREAM_TABLE, self::DEFAULT_PROJECTIONS_TABLE, self::LOAD_BATCH_SIZE);
     }
 
     public function fetchStreamMetadata(StreamName $streamName): array
@@ -133,7 +148,7 @@ class LazyEventStore implements PdoEventStore
         unset($this->ensuredExistingStreams[$streamName->toString()]);
     }
 
-    private function prepareEventStore() : void
+    public function prepareEventStore() : void
     {
         if (!$this->requireInitialization) {
             return;
@@ -158,7 +173,7 @@ class LazyEventStore implements PdoEventStore
         $this->requireInitialization = false;
     }
 
-    private function getEventStore() : PdoEventStore
+    public function getEventStore() : PdoEventStore
     {
         if ($this->initializedEventStore) {
             return $this->initializedEventStore;
@@ -249,7 +264,7 @@ class LazyEventStore implements PdoEventStore
         return $connectionFactory->getConnection();
     }
 
-    private function getWrappedConnection(): PDOConnection
+    public function getWrappedConnection(): PDOConnection
     {
         return $this->getConnection()->getWrappedConnection();
     }

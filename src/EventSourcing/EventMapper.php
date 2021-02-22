@@ -6,6 +6,7 @@ namespace Ecotone\EventSourcing;
 
 use DateTimeImmutable;
 use DateTimeZone;
+use Ecotone\Messaging\Handler\TypeDescriptor;
 use Prooph\Common\Messaging\Message;
 use Prooph\Common\Messaging\MessageFactory;
 use Ramsey\Uuid\Uuid;
@@ -42,8 +43,25 @@ class EventMapper implements MessageFactory
         );
     }
 
-    public function mapEventToName(object $event): string
+    public function mapNameToEventType(string $name) : string
     {
+        if ($name === TypeDescriptor::ARRAY) {
+            return TypeDescriptor::ARRAY;
+        }
+
+        if (array_key_exists($name, $this->nameToEventMapping)) {
+            return $this->nameToEventMapping[$name];
+        }
+
+        return $name;
+    }
+
+    public function mapEventToName(object|array $event): string
+    {
+        if (is_array($event)) {
+            return TypeDescriptor::ARRAY;
+        }
+
         $className = get_class($event);
         if (array_key_exists($className, $this->eventToNameMapping)) {
             return $this->eventToNameMapping[$className];

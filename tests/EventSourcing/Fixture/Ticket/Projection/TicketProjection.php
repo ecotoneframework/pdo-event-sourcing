@@ -10,8 +10,8 @@ use Ecotone\Modelling\Attribute\EventHandler;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Event\TicketWasRegistered;
 
 #[Asynchronous("someId")]
+#[Projection("ticketList", "ticket_stream")]
 #[Aggregate]
-#[Projection("ticketList", [""])]
 class TicketProjection
 {
     #[AggregateIdentifier]
