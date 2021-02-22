@@ -25,17 +25,13 @@ use Ramsey\Uuid\Uuid;
 
 class ProophRepository implements EventSourcedRepository
 {
-    const AGGREGATE_VERSION = '_aggregate_version';
-    const AGGREGATE_TYPE = '_aggregate_type';
-    const AGGREGATE_ID = '_aggregate_id';
-
     private HeaderMapper $headerMapper;
     private array $handledAggregateClassNames;
     private string $eventStreamTable;
     private array $aggregateClassToStreamName;
-    private ProophEventStoreWrapper $eventStore;
+    private EventStoreProophIntegration $eventStore;
 
-    public function __construct(ProophEventStoreWrapper $eventStore, string $eventStreamTable, array $handledAggregateClassNames, HeaderMapper $headerMapper, array $aggregateClassStreamNames)
+    public function __construct(EventStoreProophIntegration $eventStore, string $eventStreamTable, array $handledAggregateClassNames, HeaderMapper $headerMapper, array $aggregateClassStreamNames)
     {
         $this->eventStore = $eventStore;
         $this->headerMapper = $headerMapper;
@@ -56,12 +52,12 @@ class ProophRepository implements EventSourcedRepository
 
         $metadataMatcher = new MetadataMatcher();
         $metadataMatcher = $metadataMatcher->withMetadataMatch(
-            self::AGGREGATE_TYPE,
+            LazyProophEventStore::AGGREGATE_TYPE,
             Operator::EQUALS(),
             $aggregateClassName
         );
         $metadataMatcher = $metadataMatcher->withMetadataMatch(
-            self::AGGREGATE_ID,
+            LazyProophEventStore::AGGREGATE_ID,
             Operator::EQUALS(),
             $aggregateId
         );
@@ -72,7 +68,7 @@ class ProophRepository implements EventSourcedRepository
 
         $aggregateVersion = 0;
         if (!empty($streamEvents)) {
-            $aggregateVersion = $streamEvents[array_key_last($streamEvents)]->getMetadata()[self::AGGREGATE_VERSION];
+            $aggregateVersion = $streamEvents[array_key_last($streamEvents)]->getMetadata()[LazyProophEventStore::AGGREGATE_VERSION];
         }
 
         return EventStream::createWith($aggregateVersion, $streamEvents);
@@ -87,14 +83,14 @@ class ProophRepository implements EventSourcedRepository
         $eventsCount = count($events);
         for ($eventNumber = 1; $eventNumber <= $eventsCount; $eventNumber++) {
             $event = $events[$eventNumber - 1];
-            $eventsWithMetadata[] = EventWithMetadata::create(
+            $eventsWithMetadata[] = Event::create(
                 $event,
                 array_merge(
                     $this->headerMapper->mapFromMessageHeaders($metadata),
                     [
-                        self::AGGREGATE_ID => $aggregateId,
-                        self::AGGREGATE_TYPE => $aggregateClassName,
-                        self::AGGREGATE_VERSION => $versionBeforeHandling + $eventNumber
+                        LazyProophEventStore::AGGREGATE_ID => $aggregateId,
+                        LazyProophEventStore::AGGREGATE_TYPE => $aggregateClassName,
+                        LazyProophEventStore::AGGREGATE_VERSION => $versionBeforeHandling + $eventNumber
                     ]
                 )
             );

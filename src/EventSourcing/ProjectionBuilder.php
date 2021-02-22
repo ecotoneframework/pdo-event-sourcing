@@ -20,8 +20,8 @@ class ProjectionBuilder
     private array $handledAggregateClassNames = [];
     private array $headerMapper = [];
     private bool $enableWriteLockStrategy = false;
-    private string $eventStreamTable = LazyEventStore::DEFAULT_STREAM_TABLE;
-    private string $projectionsTable = LazyEventStore::DEFAULT_PROJECTIONS_TABLE;
+    private string $eventStreamTable = LazyProophEventStore::DEFAULT_STREAM_TABLE;
+    private string $projectionsTable = LazyProophEventStore::DEFAULT_PROJECTIONS_TABLE;
     private string $connectionReferenceName;
     private array $aggregateClassToStreamName = [];
 
@@ -83,13 +83,13 @@ class ProjectionBuilder
             $headerMapper = DefaultHeaderMapper::createWith($this->headerMapper, $this->headerMapper, $conversionService);
         }
 
-        $eventStore = new LazyEventStore(
+        $eventStore = new LazyProophEventStore(
             $this->initializeTablesOnStart,
             $referenceSearchService->get(EventMapper::class),
             $this->eventConverter,
             $referenceSearchService,
             $this->connectionReferenceName,
-            LazyEventStore::AGGREGATE_STREAM_PERSISTENCE,
+            LazyProophEventStore::AGGREGATE_STREAM_PERSISTENCE,
             $this->enableWriteLockStrategy,
             $this->eventStreamTable,
             $this->projectionsTable,

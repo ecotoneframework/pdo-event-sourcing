@@ -56,17 +56,13 @@ class EventMapper implements MessageFactory
         return $name;
     }
 
-    public function mapEventToName(object|array $event): string
+    public function mapEventToName(Event $event): string
     {
-        if (is_array($event)) {
-            return TypeDescriptor::ARRAY;
+        $type = $event->getEventType();
+        if (array_key_exists($type, $this->eventToNameMapping)) {
+            return $this->eventToNameMapping[$type];
         }
 
-        $className = get_class($event);
-        if (array_key_exists($className, $this->eventToNameMapping)) {
-            return $this->eventToNameMapping[$className];
-        }
-
-        return $className;
+        return $type;
     }
 }

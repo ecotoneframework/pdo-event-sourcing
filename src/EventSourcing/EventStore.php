@@ -3,22 +3,19 @@
 
 namespace Ecotone\EventSourcing;
 
-
 use Prooph\EventStore\Metadata\MetadataMatcher;
-use Prooph\EventStore\Stream;
-use Prooph\EventStore\StreamName;
 
 interface EventStore
 {
     public function updateStreamMetadata(string $streamName, array $newMetadata): void;
 
     /**
-     * @param EventWithMetadata[]|object[]|array[] $streamEvents
+     * @param Event[]|object[]|array[] $streamEvents
      * @param string[] $streamMetadata
      */
     public function create(string $streamName, array $streamEvents, array $streamMetadata): void;
     /**
-     * @param EventWithMetadata[]|object[]|array[] $streamEvents
+     * @param Event[]|object[]|array[] $streamEvents
      */
     public function appendTo(string $streamName, array $streamEvents): void;
 
@@ -29,7 +26,7 @@ interface EventStore
     public function hasStream(string $streamName): bool;
 
     /**
-     * @return EventWithMetadata[]
+     * @return Event[]
      */
     public function load(
         string $streamName,
@@ -39,7 +36,7 @@ interface EventStore
     ): iterable;
 
     /**
-     * @return EventWithMetadata[]
+     * @return Event[]
      */
     public function loadReverse(
         string $streamName,

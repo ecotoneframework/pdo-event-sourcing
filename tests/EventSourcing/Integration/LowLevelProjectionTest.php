@@ -4,28 +4,34 @@
 namespace Test\Ecotone\EventSourcing\Integration;
 
 
-use Ecotone\EventSourcing\LazyEventStore;
+use Ecotone\EventSourcing\Event;
+use Ecotone\EventSourcing\LazyProophEventStore;
+use Ecotone\EventSourcing\LazyProophProjectionManager;
+use Ecotone\EventSourcing\ProophEvent;
+use Ecotone\EventSourcing\EventStoreProophIntegration;
 use Prooph\EventStore\Pdo\Projection\PostgresProjectionManager;
 use Prooph\EventStore\StreamName;
 use Test\Ecotone\EventSourcing\EventSourcingMessagingTest;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Event\TicketWasRegistered;
+use Test\Ecotone\Modelling\Fixture\Ticket\Ticket;
 
 class LowLevelProjectionTest extends EventSourcingMessagingTest
 {
     public function test_building_projection()
     {
-        $eventStore = LazyEventStore::startWithDefaults($this->getConnectionFactory());
-        $projectionManager = new PostgresProjectionManager($eventStore->getEventStore(), $eventStore->getWrappedConnection());
+        $eventStore = EventStoreProophIntegration::prepareWithNoConversions(LazyProophEventStore::startWithDefaults($this->getConnectionFactory(), LazyProophEventStore::SINGLE_STREAM_PERSISTENCE));
+        $projectionManager = new LazyProophProjectionManager($eventStore);
 
-        $eventStore->appendTo(new StreamName("tickets"), new \ArrayIterator([
-            new TicketWasRegistered(1, "johny", "information")
-        ]));
+        $eventName = "ticketWasRegistered";
+        $ticketWasRegisteredEvent = Event::createWithType($eventName, ["ticketId" => 1], [LazyProophEventStore::AGGREGATE_ID => 1, LazyProophEventStore::AGGREGATE_VERSION => 1, LazyProophEventStore::AGGREGATE_TYPE => Ticket::class]);
+        $eventStore->appendTo("tickets", [$ticketWasRegisteredEvent]);
 
         $projectionManager
-            ->createProjection("tickets")
-            ->fromStream("ticket")
+            ->createProjection("tickets_list")
+            ->fromStream("tickets")
             ->when([
-                TicketWasRegistered::class => function($state, TicketWasRegistered $event) {
+                $eventName => function($state, ProophEvent $event) {
+                    var_dump($event);
                     die("test");
                 }
             ])

@@ -27,7 +27,7 @@ use Prooph\EventStore\Pdo\WriteLockStrategy\PostgresAdvisoryLockStrategy;
 use Prooph\EventStore\Stream;
 use Prooph\EventStore\StreamName;
 
-class LazyEventStore implements PdoEventStore
+class LazyProophEventStore implements PdoEventStore
 {
     const DEFAULT_CONNECTION_FACTORY = DbalConnectionFactory::class;
     const DEFAULT_ENABLE_WRITE_LOCK_STRATEGY = false;
@@ -43,6 +43,10 @@ class LazyEventStore implements PdoEventStore
 
     const SINGLE_STREAM_PERSISTENCE = "single";
     const AGGREGATE_STREAM_PERSISTENCE = "aggregate";
+
+    const AGGREGATE_VERSION = '_aggregate_version';
+    const AGGREGATE_TYPE = '_aggregate_type';
+    const AGGREGATE_ID = '_aggregate_id';
 
     private ?PdoEventStore $initializedEventStore = null;
     private ReferenceSearchService $referenceSearchService;
@@ -71,7 +75,7 @@ class LazyEventStore implements PdoEventStore
         $this->projectionsTable = $projectionsTable;
     }
 
-    public static function startWithDefaults(DbalConnectionFactory $connectionFactory, string $streamPersistenceStrategy = self::AGGREGATE_STREAM_PERSISTENCE) : LazyEventStore
+    public static function startWithDefaults(DbalConnectionFactory $connectionFactory, string $streamPersistenceStrategy = self::AGGREGATE_STREAM_PERSISTENCE) : LazyProophEventStore
     {
         return new self(self::INITIALIZE_ON_STARTUP, EventMapper::createEmpty(), InMemoryReferenceSearchService::createWith([
             DbalConnectionFactory::class => $connectionFactory
@@ -171,6 +175,16 @@ class LazyEventStore implements PdoEventStore
         }
 
         $this->requireInitialization = false;
+    }
+
+    public function getEventStreamTable(): string
+    {
+        return $this->eventStreamTable;
+    }
+
+    public function getProjectionsTable(): string
+    {
+        return $this->projectionsTable;
     }
 
     public function getEventStore() : PdoEventStore

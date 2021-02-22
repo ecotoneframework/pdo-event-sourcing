@@ -27,14 +27,14 @@ use Prooph\EventStore\Pdo\WriteLockStrategy\PostgresAdvisoryLockStrategy;
 
 class ProophRepositoryBuilder implements RepositoryBuilder
 {
-    private bool $initializeTablesOnStart = LazyEventStore::INITIALIZE_ON_STARTUP;
+    private bool $initializeTablesOnStart = LazyProophEventStore::INITIALIZE_ON_STARTUP;
     /** @var int How many event should we returned on one call */
-    private int $loadBatchSize = LazyEventStore::LOAD_BATCH_SIZE;
+    private int $loadBatchSize = LazyProophEventStore::LOAD_BATCH_SIZE;
     private array $handledAggregateClassNames = [];
     private array $headerMapper = [];
-    private bool $enableWriteLockStrategy = LazyEventStore::DEFAULT_ENABLE_WRITE_LOCK_STRATEGY;
-    private string $eventStreamTable = LazyEventStore::DEFAULT_STREAM_TABLE;
-    private string $projectionsTable = LazyEventStore::DEFAULT_PROJECTIONS_TABLE;
+    private bool $enableWriteLockStrategy = LazyProophEventStore::DEFAULT_ENABLE_WRITE_LOCK_STRATEGY;
+    private string $eventStreamTable = LazyProophEventStore::DEFAULT_STREAM_TABLE;
+    private string $projectionsTable = LazyProophEventStore::DEFAULT_PROJECTIONS_TABLE;
     private string $connectionReferenceName;
     private array $aggregateClassToStreamName = [];
 
@@ -43,7 +43,7 @@ class ProophRepositoryBuilder implements RepositoryBuilder
         $this->connectionReferenceName = $connectionReferenceName;
     }
 
-    public static function create(string $connectionReferenceName = LazyEventStore::DEFAULT_CONNECTION_FACTORY): static
+    public static function create(string $connectionReferenceName = LazyProophEventStore::DEFAULT_CONNECTION_FACTORY): static
     {
         return new static($connectionReferenceName);
     }
@@ -95,12 +95,12 @@ class ProophRepositoryBuilder implements RepositoryBuilder
             $headerMapper = DefaultHeaderMapper::createWith($this->headerMapper, $this->headerMapper, $conversionService);
         }
 
-        $eventStore = new LazyEventStore(
+        $eventStore = new LazyProophEventStore(
             $this->initializeTablesOnStart,
             $referenceSearchService->get(EventMapper::class),
             $referenceSearchService,
             $this->connectionReferenceName,
-            LazyEventStore::AGGREGATE_STREAM_PERSISTENCE,
+            LazyProophEventStore::AGGREGATE_STREAM_PERSISTENCE,
             $this->enableWriteLockStrategy,
             $this->eventStreamTable,
             $this->projectionsTable,
@@ -108,7 +108,7 @@ class ProophRepositoryBuilder implements RepositoryBuilder
         );
 
         return new ProophRepository(
-            ProophEventStoreWrapper::prepare($eventStore, $conversionService, $referenceSearchService->get(EventMapper::class)),
+            EventStoreProophIntegration::prepare($eventStore, $conversionService, $referenceSearchService->get(EventMapper::class)),
             $this->eventStreamTable,
             $this->handledAggregateClassNames,
             $headerMapper,

@@ -49,7 +49,7 @@ class ProophRepositoryBuilderTest extends EventSourcingMessagingTest
         $this->assertEquals($ticketWasRegisteredEvent, $resultStream->getEvents()[0]->getEvent());
     }
 
-    public function test_having_two_streams_for_difference_instances_of_same_aggregate()
+    public function test_having_two_streams_for_difference_instances_of_same_aggregate_using_aggregate_stream_strategy()
     {
         $proophRepositoryBuilder = ProophRepositoryBuilder::create();
 
@@ -94,5 +94,10 @@ class ProophRepositoryBuilderTest extends EventSourcingMessagingTest
         $resultStream = $repository->findBy(Ticket::class, ["ticketId"=> $secondTicketAggregate]);
         $this->assertEquals(1, $resultStream->getAggregateVersion());
         $this->assertEquals($secondTicketWasRegisteredEvent, $resultStream->getEvents()[0]->getEvent());
+    }
+
+    public function test_having_two_streams_for_difference_instances_of_same_aggregate_using_single_stream_strategy()
+    {
+
     }
 }

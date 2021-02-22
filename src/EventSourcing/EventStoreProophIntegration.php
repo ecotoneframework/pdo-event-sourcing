@@ -3,42 +3,44 @@
 
 namespace Ecotone\EventSourcing;
 
+use ArrayIterator;
+use DateTimeImmutable;
+use DateTimeZone;
+use Doctrine\DBAL\Driver\PDOConnection;
 use Ecotone\Messaging\Conversion\ConversionService;
 use Ecotone\Messaging\Conversion\InMemoryConversionService;
 use Ecotone\Messaging\Conversion\MediaType;
 use Ecotone\Messaging\Handler\TypeDescriptor;
-use Ecotone\Messaging\MessageConverter\HeaderMapper;
 use Ecotone\Messaging\MessageHeaders;
-use Ecotone\Modelling\EventStream;
+use Iterator;
 use Prooph\EventStore\EventStore as ProophEventStore;
-use Prooph\EventStore\Exception\StreamNotFound;
 use Prooph\EventStore\Metadata\MetadataMatcher;
 use Prooph\EventStore\Stream;
 use Prooph\EventStore\StreamName;
 use Ramsey\Uuid\Uuid;
 
-class ProophEventStoreWrapper implements EventStore
+class EventStoreProophIntegration implements EventStore
 {
-    private ProophEventStore $eventStore;
+    private LazyProophEventStore $eventStore;
     private ConversionService $conversionService;
     /**
      * @var EventMapper
      */
     private EventMapper $eventMapper;
 
-    private function __construct(ProophEventStore $eventStore, ConversionService $conversionService, EventMapper $eventMapper)
+    private function __construct(LazyProophEventStore $eventStore, ConversionService $conversionService, EventMapper $eventMapper)
     {
         $this->eventStore = $eventStore;
         $this->conversionService = $conversionService;
         $this->eventMapper = $eventMapper;
     }
 
-    public static function prepare(ProophEventStore $eventStore, ConversionService $conversionService, EventMapper $eventMapper) : static
+    public static function prepare(LazyProophEventStore $eventStore, ConversionService $conversionService, EventMapper $eventMapper): static
     {
-        return new self($eventStore , $conversionService, $eventMapper);
+        return new self($eventStore, $conversionService, $eventMapper);
     }
 
-    public static function prepareWithNoConversions(ProophEventStore $eventStore) : static
+    public static function prepareWithNoConversions(LazyProophEventStore $eventStore): static
     {
         return new self($eventStore, InMemoryConversionService::createWithoutConversion(), EventMapper::createEmpty());
     }
@@ -57,6 +59,57 @@ class ProophEventStoreWrapper implements EventStore
     public function create(string $streamName, array $events, array $streamMetadata): void
     {
         $this->eventStore->create(new Stream(new StreamName($streamName), $this->convertProophEvents($events), $streamMetadata));
+    }
+
+    /**
+     * @param Event[]|object[]|array[] $streamEvents
+     */
+    private function convertProophEvents(array $events): ArrayIterator
+    {
+        $proophEvents = [];
+        foreach ($events as $eventToConvert) {
+            $payload = $eventToConvert;
+            $metadata = [];
+            if ($eventToConvert instanceof Event) {
+                $payload = $eventToConvert->getEvent();
+                $metadata = $eventToConvert->getMetadata();
+            }
+
+            $proophEvents[] = new ProophEvent(
+                Uuid::fromString($metadata[MessageHeaders::MESSAGE_ID]),
+                new DateTimeImmutable("@" . $metadata[MessageHeaders::TIMESTAMP], new DateTimeZone('UTC')),
+                is_array($payload) ? $payload : $this->conversionService->convert($payload, TypeDescriptor::createFromVariable($payload), MediaType::createApplicationXPHP(), TypeDescriptor::createArrayType(), MediaType::createApplicationXPHP()),
+                $metadata,
+                $this->eventMapper->mapEventToName($eventToConvert)
+            );
+        }
+
+        return new ArrayIterator($proophEvents);
+    }
+
+    public function getWrappedEventStore(): LazyProophEventStore
+    {
+        return $this->eventStore;
+    }
+
+    public function getWrappedProophEventStore() : ProophEventStore
+    {
+        return $this->getWrappedEventStore()->getEventStore();
+    }
+
+    public function getWrappedConnection() : PDOConnection
+    {
+        return $this->getWrappedEventStore()->getWrappedConnection();
+    }
+
+    public function getEventStreamTable() : string
+    {
+        return $this->getWrappedEventStore()->getEventStreamTable();
+    }
+
+    public function getProjectionsTable() : string
+    {
+        return $this->getWrappedEventStore()->getProjectionsTable();
     }
 
     public function appendTo(string $streamName, array $events): void
@@ -83,7 +136,7 @@ class ProophEventStoreWrapper implements EventStore
     {
         $streamEvents = $this->eventStore->load(new StreamName($streamName), $fromNumber, $count, $metadataMatcher);
         if (!$streamEvents->valid()) {
-            $streamEvents = new \ArrayIterator([]);
+            $streamEvents = new ArrayIterator([]);
         }
 
         return $this->convertToEcotoneEvents(
@@ -92,11 +145,34 @@ class ProophEventStoreWrapper implements EventStore
         );
     }
 
+    /**
+     * @return Event[]
+     */
+    private function convertToEcotoneEvents(Iterator $streamEvents, bool $deserialize): array
+    {
+        $events = [];
+        $sourcePHPType = TypeDescriptor::createArrayType();
+        $PHPMediaType = MediaType::createApplicationXPHP();
+        /** @var ProophEvent $event */
+        while ($event = $streamEvents->current()) {
+            $eventName = TypeDescriptor::create($this->eventMapper->mapNameToEventType($event->messageName()));
+            $events[] = Event::createWithType(
+                $eventName,
+                $deserialize ? $this->conversionService->convert($event->payload(), $sourcePHPType, $PHPMediaType, $eventName, $PHPMediaType) : $event->payload(),
+                $event->metadata()
+            );
+
+            $streamEvents->next();
+        }
+
+        return $events;
+    }
+
     public function loadReverse(string $streamName, int $fromNumber = null, int $count = null, MetadataMatcher $metadataMatcher = null, bool $deserialize = true): array
     {
         $streamEvents = $this->eventStore->loadReverse(new StreamName($streamName), $fromNumber, $count, $metadataMatcher);
         if (!$streamEvents->valid()) {
-            $streamEvents = new \ArrayIterator([]);
+            $streamEvents = new ArrayIterator([]);
         }
 
         return $this->convertToEcotoneEvents(
@@ -123,54 +199,5 @@ class ProophEventStoreWrapper implements EventStore
     public function fetchCategoryNamesRegex(string $filter, int $limit = 20, int $offset = 0): array
     {
         return $this->fetchCategoryNamesRegex($filter, $limit, $offset);
-    }
-
-    /**
-     * @param EventWithMetadata[]|object[]|array[] $streamEvents
-     */
-    private function convertProophEvents(array $events): \ArrayIterator
-    {
-        $proophEvents = [];
-        foreach ($events as $eventToConvert) {
-            $payload = $eventToConvert;
-            $metadata = [];
-            if ($eventToConvert instanceof EventWithMetadata) {
-                $payload = $eventToConvert->getEvent();
-                $metadata = $eventToConvert->getMetadata();
-            }
-
-            $proophEvents[] = new ProophEvent(
-                Uuid::fromString($metadata[MessageHeaders::MESSAGE_ID]),
-                new \DateTimeImmutable("@" . $metadata[MessageHeaders::TIMESTAMP], new \DateTimeZone('UTC')),
-                $this->conversionService->convert($payload, TypeDescriptor::createFromVariable($payload), MediaType::createApplicationXPHP(), TypeDescriptor::createArrayType(), MediaType::createApplicationXPHP()),
-                $metadata,
-                $this->eventMapper->mapEventToName($payload)
-            );
-        }
-
-        return new \ArrayIterator($proophEvents);
-    }
-
-    /**
-     * @return EventWithMetadata[]
-     */
-    private function convertToEcotoneEvents(\Iterator $streamEvents, bool $deserialize): array
-    {
-        $events = [];
-        $sourcePHPType = TypeDescriptor::createArrayType();
-        $PHPMediaType = MediaType::createApplicationXPHP();
-        /** @var ProophEvent $event */
-        while ($event = $streamEvents->current()) {
-            $eventName = TypeDescriptor::create($this->eventMapper->mapNameToEventType($event->messageName()));
-            $events[] = EventWithMetadata::createWithType(
-                $eventName,
-                $deserialize ? $this->conversionService->convert($event->payload(), $sourcePHPType, $PHPMediaType, $eventName, $PHPMediaType) : $event->payload(),
-                $event->metadata()
-            );
-
-            $streamEvents->next();
-        }
-
-        return $events;
     }
 }
