@@ -29,7 +29,6 @@ use Prooph\EventStore\StreamName;
 
 class LazyProophEventStore implements PdoEventStore
 {
-    const DEFAULT_CONNECTION_FACTORY = DbalConnectionFactory::class;
     const DEFAULT_ENABLE_WRITE_LOCK_STRATEGY = false;
     const INITIALIZE_ON_STARTUP = true;
     const LOAD_BATCH_SIZE = 1000;

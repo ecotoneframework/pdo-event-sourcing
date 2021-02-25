@@ -11,10 +11,10 @@ use Ramsey\Uuid\Uuid;
 class Event
 {
     private string $eventType;
-    private $event;
+    private array|object $event;
     private array $metadata;
 
-    private function __construct(string $eventType, $event, array $metadata)
+    private function __construct(string $eventType, array|object $event, array $metadata)
     {
         Assert::notNull($event, "Event can not be null for " . $eventType);
 
@@ -46,7 +46,7 @@ class Event
         return $this->eventType;
     }
 
-    public function getEvent()
+    public function getEvent() : array|object
     {
         return $this->event;
     }

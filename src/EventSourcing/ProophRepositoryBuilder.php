@@ -43,7 +43,7 @@ class ProophRepositoryBuilder implements RepositoryBuilder
         $this->connectionReferenceName = $connectionReferenceName;
     }
 
-    public static function create(string $connectionReferenceName = LazyProophEventStore::DEFAULT_CONNECTION_FACTORY): static
+    public static function create(string $connectionReferenceName = DbalConnectionFactory::class): static
     {
         return new static($connectionReferenceName);
     }

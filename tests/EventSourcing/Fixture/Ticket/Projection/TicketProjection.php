@@ -9,9 +9,7 @@ use Ecotone\Modelling\Attribute\AggregateIdentifier;
 use Ecotone\Modelling\Attribute\EventHandler;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Event\TicketWasRegistered;
 
-#[Asynchronous("someId")]
 #[Projection("ticketList", "ticket_stream")]
-#[Aggregate]
 class TicketProjection
 {
     #[AggregateIdentifier]
@@ -22,7 +20,6 @@ class TicketProjection
 
     private function __construct() {}
 
-    #[EventHandler]
     public static function createFrom(TicketWasRegistered $event) : static
     {
         $self = new static();
