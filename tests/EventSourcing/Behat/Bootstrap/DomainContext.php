@@ -17,6 +17,7 @@ use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 use Ramsey\Uuid\Uuid;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Command\RegisterTicket;
+use Test\Ecotone\EventSourcing\Fixture\Ticket\Projection\InProgressTicketList;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\TicketEventConverter;
 
 class DomainContext extends TestCase implements Context
@@ -29,10 +30,13 @@ class DomainContext extends TestCase implements Context
      */
     public function iActiveMessagingForNamespace(string $namespace)
     {
+        $managerRegistryConnectionFactory = new DbalConnectionFactory(["dsn" => 'pgsql://ecotone:secret@database:5432/ecotone']);
+        self::$connection = $managerRegistryConnectionFactory->createContext()->getDbalConnection();
+
         switch ($namespace) {
             case "Test\Ecotone\EventSourcing\Fixture\Ticket":
             {
-                $objects = [new TicketEventConverter()];
+                $objects = [new TicketEventConverter(), new InProgressTicketList(self::$connection)];
                 break;
             }
             default:
@@ -41,12 +45,15 @@ class DomainContext extends TestCase implements Context
             }
         }
 
-        $managerRegistryConnectionFactory = new DbalConnectionFactory(["dsn" => 'pgsql://ecotone:secret@database:5432/ecotone']);
-        self::$connection = $managerRegistryConnectionFactory->createContext()->getDbalConnection();
-
         self::$messagingSystem = EcotoneLiteConfiguration::createWithConfiguration(
             __DIR__ . "/../../../../",
-            InMemoryPSRContainer::createFromObjects(array_merge($objects, ["managerRegistry" => $managerRegistryConnectionFactory, DbalConnectionFactory::class => $managerRegistryConnectionFactory])),
+            InMemoryPSRContainer::createFromObjects(array_merge(
+                $objects,
+                [
+                    "managerRegistry" => $managerRegistryConnectionFactory,
+                    DbalConnectionFactory::class => $managerRegistryConnectionFactory
+                ])
+            ),
             ServiceConfiguration::createWithDefaults()
                 ->withNamespaces([$namespace])
                 ->withCacheDirectoryPath(sys_get_temp_dir() . DIRECTORY_SEPARATOR . Uuid::uuid4()->toString()),

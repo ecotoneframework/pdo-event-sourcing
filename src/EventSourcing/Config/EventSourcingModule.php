@@ -10,6 +10,7 @@ use Ecotone\Messaging\Attribute\ModuleAnnotation;
 use Ecotone\Messaging\Config\Annotation\ModuleConfiguration\NoExternalConfigurationModule;
 use Ecotone\Messaging\Config\Configuration;
 use Ecotone\Messaging\Config\ModuleReferenceSearchService;
+use Ecotone\Messaging\Endpoint\InboundChannelAdapter\InboundChannelAdapterBuilder;
 
 #[ModuleAnnotation]
 class EventSourcingModule extends NoExternalConfigurationModule
@@ -23,7 +24,9 @@ class EventSourcingModule extends NoExternalConfigurationModule
     {
         $moduleReferenceSearchService->store(EventMapper::class, EventMapper::createEmpty());
 
+        $configuration->registerConsumer(InboundChannelAdapterBuilder::createWithDirectObject(
 
+        ));
     }
 
     public function canHandle($extensionObject): bool

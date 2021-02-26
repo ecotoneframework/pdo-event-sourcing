@@ -4,7 +4,7 @@
 namespace Ecotone\EventSourcing;
 
 
-interface ProjectionManager
+interface ProjectionConfigurator
 {
-    
+
 }
