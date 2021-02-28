@@ -6,6 +6,7 @@ namespace Ecotone\EventSourcing;
 
 use Doctrine\DBAL\Driver\PDOConnection;
 use Ecotone\Dbal\DbalReconnectableConnectionFactory;
+use Ecotone\EventSourcing\Config\EventSourcingModule;
 use Ecotone\EventSourcing\StreamConfiguration\OneStreamPerAggregateInstanceConfiguration;
 use Ecotone\EventSourcing\StreamConfiguration\SingleStreamConfiguration;
 use Ecotone\Messaging\Conversion\ConversionService;
@@ -27,32 +28,19 @@ use Prooph\EventStore\Pdo\WriteLockStrategy\PostgresAdvisoryLockStrategy;
 
 class ProophRepositoryBuilder implements RepositoryBuilder
 {
-    private bool $initializeTablesOnStart = LazyProophEventStore::INITIALIZE_ON_STARTUP;
-    /** @var int How many event should we returned on one call */
-    private int $loadBatchSize = LazyProophEventStore::LOAD_BATCH_SIZE;
     private array $handledAggregateClassNames = [];
     private array $headerMapper = [];
-    private bool $enableWriteLockStrategy = LazyProophEventStore::DEFAULT_ENABLE_WRITE_LOCK_STRATEGY;
-    private string $eventStreamTable = LazyProophEventStore::DEFAULT_STREAM_TABLE;
-    private string $projectionsTable = LazyProophEventStore::DEFAULT_PROJECTIONS_TABLE;
-    private string $connectionReferenceName;
     private array $aggregateClassToStreamName = [];
+    private EventSourcingConfiguration $eventSourcingConfiguration;
 
-    private function __construct(string $connectionReferenceName)
+    private function __construct(EventSourcingConfiguration $eventSourcingConfiguration)
     {
-        $this->connectionReferenceName = $connectionReferenceName;
+        $this->eventSourcingConfiguration = $eventSourcingConfiguration;
     }
 
-    public static function create(string $connectionReferenceName = DbalConnectionFactory::class): static
+    public static function create(EventSourcingConfiguration $eventSourcingConfiguration): static
     {
-        return new static($connectionReferenceName);
-    }
-
-    public function withTableInitializationOnStartup(bool $initialize) : static
-    {
-        $this->initializeTablesOnStart = $initialize;
-
-        return $this;
+        return new static($eventSourcingConfiguration);
     }
 
     public function canHandle(string $aggregateClassName): bool
@@ -67,16 +55,16 @@ class ProophRepositoryBuilder implements RepositoryBuilder
         return $this;
     }
 
-    public function isEventSourced(): bool
-    {
-        return true;
-    }
-
     public function withMetadataMapper(string $headerMapper): self
     {
         $this->headerMapper = explode(",", $headerMapper);
 
         return $this;
+    }
+
+    public function isEventSourced(): bool
+    {
+        return true;
     }
 
     public function withAggregateClassToStreamMapping(array $aggregateClassToStreamName) : static
@@ -95,21 +83,12 @@ class ProophRepositoryBuilder implements RepositoryBuilder
             $headerMapper = DefaultHeaderMapper::createWith($this->headerMapper, $this->headerMapper, $conversionService);
         }
 
-        $eventStore = new LazyProophEventStore(
-            $this->initializeTablesOnStart,
-            $referenceSearchService->get(EventMapper::class),
-            $referenceSearchService,
-            $this->connectionReferenceName,
-            LazyProophEventStore::AGGREGATE_STREAM_PERSISTENCE,
-            $this->enableWriteLockStrategy,
-            $this->eventStreamTable,
-            $this->projectionsTable,
-            $this->loadBatchSize
-        );
-
         return new ProophRepository(
-            EventStoreProophIntegration::prepare($eventStore, $conversionService, $referenceSearchService->get(EventMapper::class)),
-            $this->eventStreamTable,
+            EventStoreProophIntegration::prepare(
+                new LazyProophEventStore($this->eventSourcingConfiguration, $referenceSearchService),
+                $conversionService,
+                $referenceSearchService->get(EventMapper::class)
+            ),
             $this->handledAggregateClassNames,
             $headerMapper,
             []

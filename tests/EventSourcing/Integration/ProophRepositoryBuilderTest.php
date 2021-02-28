@@ -5,6 +5,7 @@ namespace Test\Ecotone\EventSourcing\Integration;
 
 
 use Ecotone\EventSourcing\EventMapper;
+use Ecotone\EventSourcing\EventSourcingConfiguration;
 use Ecotone\EventSourcing\ProophRepositoryBuilder;
 use Ecotone\Messaging\Config\InMemoryChannelResolver;
 use Ecotone\Messaging\Conversion\ConversionService;
@@ -22,7 +23,7 @@ class ProophRepositoryBuilderTest extends EventSourcingMessagingTest
 {
     public function test_storing_and_retrieving()
     {
-        $proophRepositoryBuilder = ProophRepositoryBuilder::create();
+        $proophRepositoryBuilder = ProophRepositoryBuilder::create(EventSourcingConfiguration::createWithDefaults());
 
         $ticketId = Uuid::uuid4()->toString();
         $ticketWasRegisteredEvent = new TicketWasRegistered($ticketId, "Johny", "standard");
@@ -51,7 +52,7 @@ class ProophRepositoryBuilderTest extends EventSourcingMessagingTest
 
     public function test_having_two_streams_for_difference_instances_of_same_aggregate_using_aggregate_stream_strategy()
     {
-        $proophRepositoryBuilder = ProophRepositoryBuilder::create();
+        $proophRepositoryBuilder = ProophRepositoryBuilder::create(EventSourcingConfiguration::createWithDefaults());
 
         $firstTicketAggregate = Uuid::uuid4()->toString();
         $secondTicketAggregate = Uuid::uuid4()->toString();

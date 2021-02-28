@@ -27,16 +27,14 @@ class ProophRepository implements EventSourcedRepository
 {
     private HeaderMapper $headerMapper;
     private array $handledAggregateClassNames;
-    private string $eventStreamTable;
     private array $aggregateClassToStreamName;
     private EventStoreProophIntegration $eventStore;
 
-    public function __construct(EventStoreProophIntegration $eventStore, string $eventStreamTable, array $handledAggregateClassNames, HeaderMapper $headerMapper, array $aggregateClassStreamNames)
+    public function __construct(EventStoreProophIntegration $eventStore, array $handledAggregateClassNames, HeaderMapper $headerMapper, array $aggregateClassStreamNames)
     {
         $this->eventStore = $eventStore;
         $this->headerMapper = $headerMapper;
         $this->handledAggregateClassNames = $handledAggregateClassNames;
-        $this->eventStreamTable = $eventStreamTable;
         $this->aggregateClassToStreamName = $aggregateClassStreamNames;
     }
 

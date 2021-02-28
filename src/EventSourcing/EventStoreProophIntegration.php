@@ -102,16 +102,6 @@ class EventStoreProophIntegration implements EventStore
         return $this->getWrappedEventStore()->getWrappedConnection();
     }
 
-    public function getEventStreamTable() : string
-    {
-        return $this->getWrappedEventStore()->getEventStreamTable();
-    }
-
-    public function getProjectionsTable() : string
-    {
-        return $this->getWrappedEventStore()->getProjectionsTable();
-    }
-
     public function appendTo(string $streamName, array $events): void
     {
         $this->eventStore->appendTo(new StreamName($streamName), $this->convertProophEvents($events));

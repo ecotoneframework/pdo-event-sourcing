@@ -49,36 +49,20 @@ class LazyProophEventStore implements PdoEventStore
 
     private ?PdoEventStore $initializedEventStore = null;
     private ReferenceSearchService $referenceSearchService;
-    private string $connectionReferenceName;
-    private string $streamPersistenceStrategy;
-    private bool $enableWriteLockStrategy;
-    private string $eventStreamTable;
     private MessageFactory $messageFactory;
     private MessageConverter $messageConverter;
     private int $eventLoadBatchSize;
-    private string $projectionsTable;
     private bool $requireInitialization;
     private array $ensuredExistingStreams = [];
+    private EventSourcingConfiguration $eventSourcingConfiguration;
 
-    public function __construct(bool $initializeTables, MessageFactory $messageFactory, ReferenceSearchService $referenceSearchService, string $connectionReferenceName, string $streamPersistenceStrategy, bool $enableWriteLockStrategy, string $eventStreamTable, string $projectionsTable, int $eventLoadBatchSize)
+    public function __construct(EventSourcingConfiguration $eventSourcingConfiguration, ReferenceSearchService $referenceSearchService)
     {
-        $this->requireInitialization = $initializeTables;
-        $this->referenceSearchService = $referenceSearchService;
-        $this->connectionReferenceName = $connectionReferenceName;
-        $this->streamPersistenceStrategy = $streamPersistenceStrategy;
-        $this->enableWriteLockStrategy = $enableWriteLockStrategy;
-        $this->eventStreamTable = $eventStreamTable;
-        $this->messageFactory = $messageFactory;
-        $this->eventLoadBatchSize = $eventLoadBatchSize;
         $this->messageConverter = new ProophEventConverter();
-        $this->projectionsTable = $projectionsTable;
-    }
-
-    public static function startWithDefaults(DbalConnectionFactory $connectionFactory, string $streamPersistenceStrategy = self::AGGREGATE_STREAM_PERSISTENCE) : LazyProophEventStore
-    {
-        return new self(self::INITIALIZE_ON_STARTUP, EventMapper::createEmpty(), InMemoryReferenceSearchService::createWith([
-            DbalConnectionFactory::class => $connectionFactory
-        ]), DbalConnectionFactory::class, $streamPersistenceStrategy, self::DEFAULT_ENABLE_WRITE_LOCK_STRATEGY, self::DEFAULT_STREAM_TABLE, self::DEFAULT_PROJECTIONS_TABLE, self::LOAD_BATCH_SIZE);
+        $this->messageFactory = $referenceSearchService->get(EventMapper::class);
+        $this->eventSourcingConfiguration = $eventSourcingConfiguration;
+        $this->requireInitialization = $eventSourcingConfiguration->isInitializedOnStart();
+        $this->referenceSearchService = $referenceSearchService;
     }
 
     public function fetchStreamMetadata(StreamName $streamName): array
@@ -158,14 +142,14 @@ class LazyProophEventStore implements PdoEventStore
         }
 
         $sm = $this->getConnection()->getSchemaManager();
-        if (!$sm->tablesExist([$this->eventStreamTable])) {
+        if (!$sm->tablesExist([$this->eventSourcingConfiguration->getEventStreamTableName()])) {
             match ($this->getEventStoreType()) {
                 self::EVENT_STORE_TYPE_POSTGRES => $this->createPostgresEventStreamTable(),
                 self::EVENT_STORE_TYPE_MARIADB => $this->createMariadbEventStreamTable(),
                 self::EVENT_STORE_TYPE_MYSQL => $this->createMysqlEventStreamTable()
             };
         }
-        if (!$sm->tablesExist([$this->projectionsTable])) {
+        if (!$sm->tablesExist([$this->eventSourcingConfiguration->getProjectionsTable()])) {
             match ($this->getEventStoreType()) {
                 self::EVENT_STORE_TYPE_POSTGRES => $this->createPostgresProjectionTable(),
                 self::EVENT_STORE_TYPE_MARIADB => $this->createMariadbProjectionTable(),
@@ -174,16 +158,6 @@ class LazyProophEventStore implements PdoEventStore
         }
 
         $this->requireInitialization = false;
-    }
-
-    public function getEventStreamTable(): string
-    {
-        return $this->eventStreamTable;
-    }
-
-    public function getProjectionsTable(): string
-    {
-        return $this->projectionsTable;
     }
 
     public function getEventStore() : PdoEventStore
@@ -203,7 +177,7 @@ class LazyProophEventStore implements PdoEventStore
 
         $writeLockStrategy = new NoLockStrategy();
         $connection = $this->getWrappedConnection();
-        if ($this->enableWriteLockStrategy) {
+        if ($this->eventSourcingConfiguration->isWriteLockStrategyEnabled()) {
             $writeLockStrategy = match ($eventStoreType) {
                 self::EVENT_STORE_TYPE_MYSQL => new MysqlMetadataLockStrategy($connection),
                 self::EVENT_STORE_TYPE_MARIADB => new MariaDbMetadataLockStrategy($connection),
@@ -221,8 +195,8 @@ class LazyProophEventStore implements PdoEventStore
             $this->messageFactory,
             $connection,
             $persistenceStrategy,
-            $this->eventLoadBatchSize,
-            $this->eventStreamTable,
+            $this->eventSourcingConfiguration->getLoadBatchSize(),
+            $this->eventSourcingConfiguration->getEventStreamTableName(),
             true,
             $writeLockStrategy
         );
@@ -234,7 +208,7 @@ class LazyProophEventStore implements PdoEventStore
 
     private function getMysqlPersistenceStrategy(): PersistenceStrategy
     {
-        return match ($this->streamPersistenceStrategy) {
+        return match ($this->eventSourcingConfiguration->getPersistenceStrategy()) {
             self::AGGREGATE_STREAM_PERSISTENCE => new PersistenceStrategy\MySqlAggregateStreamStrategy($this->messageConverter),
             self::SINGLE_STREAM_PERSISTENCE => new PersistenceStrategy\MySqlSingleStreamStrategy($this->messageConverter)
         };
@@ -242,7 +216,7 @@ class LazyProophEventStore implements PdoEventStore
 
     private function getMeriaPersistenceStrategy(): PersistenceStrategy
     {
-        return match ($this->streamPersistenceStrategy) {
+        return match ($this->eventSourcingConfiguration->getPersistenceStrategy()) {
             self::AGGREGATE_STREAM_PERSISTENCE => new PersistenceStrategy\MariaDbAggregateStreamStrategy($this->messageConverter),
             self::SINGLE_STREAM_PERSISTENCE => new PersistenceStrategy\MariaDbSingleStreamStrategy($this->messageConverter)
         };
@@ -250,7 +224,7 @@ class LazyProophEventStore implements PdoEventStore
 
     private function getPostgresPersistenceStrategy(): PersistenceStrategy
     {
-        return match ($this->streamPersistenceStrategy) {
+        return match ($this->eventSourcingConfiguration->getPersistenceStrategy()) {
             self::AGGREGATE_STREAM_PERSISTENCE => new PersistenceStrategy\PostgresAggregateStreamStrategy($this->messageConverter),
             self::SINGLE_STREAM_PERSISTENCE => new PersistenceStrategy\PostgresSingleStreamStrategy($this->messageConverter)
         };
@@ -272,7 +246,7 @@ class LazyProophEventStore implements PdoEventStore
 
     public function getConnection(): \Doctrine\DBAL\Connection
     {
-        $connectionFactory = new DbalReconnectableConnectionFactory($this->referenceSearchService->get($this->connectionReferenceName));
+        $connectionFactory = new DbalReconnectableConnectionFactory($this->referenceSearchService->get($this->eventSourcingConfiguration->getConnectionReferenceName()));
 
         return $connectionFactory->getConnection();
     }

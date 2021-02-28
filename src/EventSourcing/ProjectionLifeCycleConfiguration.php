@@ -6,20 +6,24 @@ namespace Ecotone\EventSourcing;
 
 class ProjectionLifeCycleConfiguration
 {
-    private string $projectionName;
-    private string $initializationRequestChannel;
+    private ?string $initializationRequestChannel = null;
     private ?string $resetRequestChannel = null;
     private ?string $deleteRequestChannel = null;
 
-    private function __construct(string $projectionName, string $initializationRequestChannel)
+    private function __construct()
     {
-        $this->projectionName = $projectionName;
-        $this->initializationRequestChannel = $initializationRequestChannel;
     }
 
-    public static function create(string $projectionName, string $initializationRequestChannel) : static
+    public static function create() : static
     {
-        return new self($projectionName, $initializationRequestChannel);
+        return new self();
+    }
+
+    public function withInitializationRequestChannel(string $initializationRequestChannel) : static
+    {
+        $this->initializationRequestChannel = $initializationRequestChannel;
+
+        return $this;
     }
 
     public function withDeleteRequestChannel(string $deleteRequestChannel) : static
@@ -36,12 +40,7 @@ class ProjectionLifeCycleConfiguration
         return $this;
     }
 
-    public function getProjectionName(): string
-    {
-        return $this->projectionName;
-    }
-
-    public function getInitializationRequestChannel(): string
+    public function getInitializationRequestChannel(): ?string
     {
         return $this->initializationRequestChannel;
     }
