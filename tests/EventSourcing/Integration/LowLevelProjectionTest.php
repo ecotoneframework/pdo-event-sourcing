@@ -8,7 +8,7 @@ use Ecotone\EventSourcing\Event;
 use Ecotone\EventSourcing\LazyProophEventStore;
 use Ecotone\EventSourcing\LazyProophProjectionManager;
 use Ecotone\EventSourcing\ProophEvent;
-use Ecotone\EventSourcing\EventStoreProophIntegration;
+use Ecotone\EventSourcing\EcotoneEventStoreProophWrapper;
 use Prooph\EventStore\Pdo\Projection\PostgresProjectionManager;
 use Prooph\EventStore\StreamName;
 use Test\Ecotone\EventSourcing\EventSourcingMessagingTest;
@@ -17,9 +17,9 @@ use Test\Ecotone\Modelling\Fixture\Ticket\Ticket;
 
 class LowLevelProjectionTest extends EventSourcingMessagingTest
 {
-    public function test_building_projection()
+    public function __test_building_projection()
     {
-        $eventStore = EventStoreProophIntegration::prepareWithNoConversions(LazyProophEventStore::startWithDefaults($this->getConnectionFactory(), LazyProophEventStore::SINGLE_STREAM_PERSISTENCE));
+        $eventStore = EcotoneEventStoreProophWrapper::prepareWithNoConversions(LazyProophEventStore::startWithDefaults($this->getConnectionFactory(), LazyProophEventStore::SINGLE_STREAM_PERSISTENCE));
         $projectionManager = new LazyProophProjectionManager($eventStore);
 
         $eventName = "ticketWasRegistered";

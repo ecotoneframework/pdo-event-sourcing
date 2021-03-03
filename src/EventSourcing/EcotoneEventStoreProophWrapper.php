@@ -19,13 +19,10 @@ use Prooph\EventStore\Stream;
 use Prooph\EventStore\StreamName;
 use Ramsey\Uuid\Uuid;
 
-class EventStoreProophIntegration implements EventStore
+class EcotoneEventStoreProophWrapper implements EventStore
 {
     private LazyProophEventStore $eventStore;
     private ConversionService $conversionService;
-    /**
-     * @var EventMapper
-     */
     private EventMapper $eventMapper;
 
     private function __construct(LazyProophEventStore $eventStore, ConversionService $conversionService, EventMapper $eventMapper)

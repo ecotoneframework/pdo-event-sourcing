@@ -28,9 +28,9 @@ class ProophRepository implements EventSourcedRepository
     private HeaderMapper $headerMapper;
     private array $handledAggregateClassNames;
     private array $aggregateClassToStreamName;
-    private EventStoreProophIntegration $eventStore;
+    private EcotoneEventStoreProophWrapper $eventStore;
 
-    public function __construct(EventStoreProophIntegration $eventStore, array $handledAggregateClassNames, HeaderMapper $headerMapper, array $aggregateClassStreamNames)
+    public function __construct(EcotoneEventStoreProophWrapper $eventStore, array $handledAggregateClassNames, HeaderMapper $headerMapper, array $aggregateClassStreamNames)
     {
         $this->eventStore = $eventStore;
         $this->headerMapper = $headerMapper;

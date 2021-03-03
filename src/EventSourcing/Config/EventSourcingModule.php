@@ -19,6 +19,7 @@ use Ecotone\Messaging\Endpoint\InboundChannelAdapter\InboundChannelAdapterBuilde
 use Ecotone\Messaging\Support\Assert;
 use Ecotone\Modelling\Attribute\EventHandler;
 use Ecotone\Modelling\Config\ModellingHandlerModule;
+use Ramsey\Uuid\Uuid;
 
 #[ModuleAnnotation]
 class EventSourcingModule extends NoExternalConfigurationModule
@@ -52,7 +53,7 @@ class EventSourcingModule extends NoExternalConfigurationModule
                 }
             }
 
-            Assert::keyNotExists($projectionAttribute->getName(), $projectionConfigurations, "Can't define projection with name {$projectionAttribute->getName()} twice");
+            Assert::keyNotExists($projectionConfigurations, $projectionAttribute->getName(), "Can't define projection with name {$projectionAttribute->getName()} twice");
 
             $projectionLifeCycle = ProjectionLifeCycleConfiguration::create();
             if ($projectionAttribute->isFromAll()) {
@@ -95,22 +96,27 @@ class EventSourcingModule extends NoExternalConfigurationModule
     public function prepare(Configuration $configuration, array $extensionObjects, ModuleReferenceSearchService $moduleReferenceSearchService): void
     {
         $moduleReferenceSearchService->store(EventMapper::class, EventMapper::createEmpty());
-        $eventStoreConfiguration = EventSourcingConfiguration::createWithDefaults();
+        $eventSourcingConfiguration = EventSourcingConfiguration::createWithDefaults();
         foreach ($extensionObjects as $extensionObject) {
             if ($extensionObject instanceof EventSourcingConfiguration) {
-                $eventStoreConfiguration = $extensionObject;
+                $eventSourcingConfiguration = $extensionObject;
             }
         }
 
         $lazyProophProjectionManager = null;
 
         foreach ($this->projectionConfigurations as $projectionConfiguration) {
-            $projectionConfiguration->
+            $generatedChannelName = Uuid::uuid4()->toString();
+            $messageHandlerBuilder = new ProjectionExecutorBuilder($eventSourcingConfiguration, $projectionConfiguration);
+            $messageHandlerBuilder = $messageHandlerBuilder->withInputChannelName($generatedChannelName);
+            $configuration->registerMessageHandler($messageHandlerBuilder);
+
+            $configuration->registerConsumer(InboundChannelAdapterBuilder::createWithDirectObject(
+                $generatedChannelName,
+                new ProjectionChannelAdapter(),
+                "run"
+            )->withEndpointId($projectionConfiguration->getProjectionName()));
         }
-
-        $configuration->registerConsumer(InboundChannelAdapterBuilder::createWithDirectObject(
-
-        ));
     }
 
     public function canHandle($extensionObject): bool
@@ -126,6 +132,6 @@ class EventSourcingModule extends NoExternalConfigurationModule
             }
         }
 
-        return [ProophRepositoryBuilder::create()];
+        return [ProophRepositoryBuilder::create(EventSourcingConfiguration::createWithDefaults())];
     }
 }

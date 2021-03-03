@@ -27,7 +27,7 @@ use Prooph\EventStore\Pdo\WriteLockStrategy\PostgresAdvisoryLockStrategy;
 use Prooph\EventStore\Stream;
 use Prooph\EventStore\StreamName;
 
-class LazyProophEventStore implements PdoEventStore
+class LazyProophEventStore implements EventStore
 {
     const DEFAULT_ENABLE_WRITE_LOCK_STRATEGY = false;
     const INITIALIZE_ON_STARTUP = true;
@@ -58,7 +58,7 @@ class LazyProophEventStore implements PdoEventStore
 
     public function __construct(EventSourcingConfiguration $eventSourcingConfiguration, ReferenceSearchService $referenceSearchService)
     {
-        $this->messageConverter = new ProophEventConverter();
+        $this->messageConverter = new FromProophMessageToArrayConverter();
         $this->messageFactory = $referenceSearchService->get(EventMapper::class);
         $this->eventSourcingConfiguration = $eventSourcingConfiguration;
         $this->requireInitialization = $eventSourcingConfiguration->isInitializedOnStart();
@@ -170,7 +170,7 @@ class LazyProophEventStore implements PdoEventStore
 
         $persistenceStrategy = match ($eventStoreType) {
             self::EVENT_STORE_TYPE_MYSQL => $this->getMysqlPersistenceStrategy(),
-            self::EVENT_STORE_TYPE_MARIADB => $this->getMeriaPersistenceStrategy(),
+            self::EVENT_STORE_TYPE_MARIADB => $this->getMariaDbPersistenceStrategy(),
             self::EVENT_STORE_TYPE_POSTGRES => $this->getPostgresPersistenceStrategy(),
             default => throw InvalidArgumentException::create('Unexpected match value ' . $eventStoreType)
         };
@@ -214,7 +214,7 @@ class LazyProophEventStore implements PdoEventStore
         };
     }
 
-    private function getMeriaPersistenceStrategy(): PersistenceStrategy
+    private function getMariaDbPersistenceStrategy(): PersistenceStrategy
     {
         return match ($this->eventSourcingConfiguration->getPersistenceStrategy()) {
             self::AGGREGATE_STREAM_PERSISTENCE => new PersistenceStrategy\MariaDbAggregateStreamStrategy($this->messageConverter),

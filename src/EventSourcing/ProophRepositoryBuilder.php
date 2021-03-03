@@ -84,7 +84,7 @@ class ProophRepositoryBuilder implements RepositoryBuilder
         }
 
         return new ProophRepository(
-            EventStoreProophIntegration::prepare(
+            EcotoneEventStoreProophWrapper::prepare(
                 new LazyProophEventStore($this->eventSourcingConfiguration, $referenceSearchService),
                 $conversionService,
                 $referenceSearchService->get(EventMapper::class)
