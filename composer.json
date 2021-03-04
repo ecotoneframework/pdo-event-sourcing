@@ -1,5 +1,5 @@
 {
-    "name": "ecotone/pdo-event-sourcing",
+    "name": "ecotone/prooph-event-sourcing",
     "license": "MIT",
     "homepage": "https://docs.ecotone.tech/",
     "type": "library",
