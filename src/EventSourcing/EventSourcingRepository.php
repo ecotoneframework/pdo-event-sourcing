@@ -23,7 +23,7 @@ use Prooph\EventStore\Stream;
 use Prooph\EventStore\StreamName;
 use Ramsey\Uuid\Uuid;
 
-class ProophRepository implements EventSourcedRepository
+class EventSourcingRepository implements EventSourcedRepository
 {
     private HeaderMapper $headerMapper;
     private array $handledAggregateClassNames;

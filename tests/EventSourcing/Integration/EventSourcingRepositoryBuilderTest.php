@@ -7,7 +7,7 @@ namespace Test\Ecotone\EventSourcing\Integration;
 use Ecotone\EventSourcing\EventMapper;
 use Ecotone\EventSourcing\EventSourcingConfiguration;
 use Ecotone\EventSourcing\LazyProophEventStore;
-use Ecotone\EventSourcing\ProophRepositoryBuilder;
+use Ecotone\EventSourcing\EventSourcingRepositoryBuilder;
 use Ecotone\Messaging\Config\InMemoryChannelResolver;
 use Ecotone\Messaging\Conversion\ConversionService;
 use Ecotone\Messaging\Conversion\InMemoryConversionService;
@@ -20,11 +20,11 @@ use Test\Ecotone\EventSourcing\EventSourcingMessagingTest;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Event\TicketWasRegistered;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Ticket;
 
-class ProophRepositoryBuilderTest extends EventSourcingMessagingTest
+class EventSourcingRepositoryBuilderTest extends EventSourcingMessagingTest
 {
     public function test_storing_and_retrieving()
     {
-        $proophRepositoryBuilder = ProophRepositoryBuilder::create(
+        $proophRepositoryBuilder = EventSourcingRepositoryBuilder::create(
             EventSourcingConfiguration::createWithDefaults()
                 ->withPersistenceStrategy(LazyProophEventStore::SINGLE_STREAM_PERSISTENCE)
         );
@@ -56,7 +56,7 @@ class ProophRepositoryBuilderTest extends EventSourcingMessagingTest
 
     public function test_having_two_streams_for_difference_instances_of_same_aggregate_using_aggregate_stream_strategy()
     {
-        $proophRepositoryBuilder = ProophRepositoryBuilder::create(
+        $proophRepositoryBuilder = EventSourcingRepositoryBuilder::create(
             EventSourcingConfiguration::createWithDefaults()
                 ->withPersistenceStrategy(LazyProophEventStore::AGGREGATE_STREAM_PERSISTENCE)
         );
@@ -106,7 +106,7 @@ class ProophRepositoryBuilderTest extends EventSourcingMessagingTest
 
     public function test_having_two_streams_for_difference_instances_of_same_aggregate_using_single_stream_strategy()
     {
-        $proophRepositoryBuilder = ProophRepositoryBuilder::create(
+        $proophRepositoryBuilder = EventSourcingRepositoryBuilder::create(
             EventSourcingConfiguration::createWithDefaults()
                 ->withPersistenceStrategy(LazyProophEventStore::SINGLE_STREAM_PERSISTENCE)
         );

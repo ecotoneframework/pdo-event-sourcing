@@ -26,7 +26,7 @@ use Prooph\EventStore\Pdo\WriteLockStrategy\MysqlMetadataLockStrategy;
 use Prooph\EventStore\Pdo\WriteLockStrategy\NoLockStrategy;
 use Prooph\EventStore\Pdo\WriteLockStrategy\PostgresAdvisoryLockStrategy;
 
-class ProophRepositoryBuilder implements RepositoryBuilder
+class EventSourcingRepositoryBuilder implements RepositoryBuilder
 {
     private array $handledAggregateClassNames = [];
     private array $headerMapper = [];
@@ -83,7 +83,7 @@ class ProophRepositoryBuilder implements RepositoryBuilder
             $headerMapper = DefaultHeaderMapper::createWith($this->headerMapper, $this->headerMapper, $conversionService);
         }
 
-        return new ProophRepository(
+        return new EventSourcingRepository(
             EcotoneEventStoreProophWrapper::prepare(
                 new LazyProophEventStore($this->eventSourcingConfiguration, $referenceSearchService),
                 $conversionService,

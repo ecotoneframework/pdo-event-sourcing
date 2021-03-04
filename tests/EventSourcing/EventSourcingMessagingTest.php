@@ -5,7 +5,7 @@ namespace Test\Ecotone\EventSourcing;
 
 
 use Ecotone\Dbal\DbalReconnectableConnectionFactory;
-use Ecotone\EventSourcing\ProophRepository;
+use Ecotone\EventSourcing\EventSourcingRepository;
 use Ecotone\Messaging\Handler\InMemoryReferenceSearchService;
 use Enqueue\Dbal\DbalConnectionFactory;
 use Enqueue\Dbal\ManagerRegistryConnectionFactory;

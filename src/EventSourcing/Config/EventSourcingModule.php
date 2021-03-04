@@ -16,12 +16,13 @@ use Ecotone\EventSourcing\EventStore;
 use Ecotone\EventSourcing\ProjectionConfiguration;
 use Ecotone\EventSourcing\ProjectionLifeCycleConfiguration;
 use Ecotone\EventSourcing\ProjectionManager;
-use Ecotone\EventSourcing\ProophRepositoryBuilder;
+use Ecotone\EventSourcing\EventSourcingRepositoryBuilder;
 use Ecotone\Messaging\Attribute\ModuleAnnotation;
 use Ecotone\Messaging\Config\Annotation\AnnotatedDefinitionReference;
 use Ecotone\Messaging\Config\Annotation\ModuleConfiguration\NoExternalConfigurationModule;
 use Ecotone\Messaging\Config\Configuration;
 use Ecotone\Messaging\Config\ConsoleCommandConfiguration;
+use Ecotone\Messaging\Config\ConsoleCommandParameter;
 use Ecotone\Messaging\Config\ModuleReferenceSearchService;
 use Ecotone\Messaging\Endpoint\InboundChannelAdapter\InboundChannelAdapterBuilder;
 use Ecotone\Messaging\Handler\ClassDefinition;
@@ -306,7 +307,9 @@ class EventSourcingModule extends NoExternalConfigurationModule
             [HeaderBuilder::create("name", "ecotone.eventSourcing.manager.name"), HeaderBuilder::create("deleteEmittedEvents", "ecotone.eventSourcing.manager.deleteEmittedEvents")],
             [GatewayHeaderBuilder::create("name", "ecotone.eventSourcing.manager.name"), GatewayHeaderBuilder::create("deleteEmittedEvents", "ecotone.eventSourcing.manager.deleteEmittedEvents")],
             $eventSourcingConfiguration,
-            $configuration
+            $configuration,
+            "ecotone:es:delete-projection",
+            [ConsoleCommandParameter::create("name"), ConsoleCommandParameter::createWithDefaultValue("deleteEmittedEvents", true)]
         );
 
         $this->registerProjectionManagerAction(
@@ -314,7 +317,9 @@ class EventSourcingModule extends NoExternalConfigurationModule
             [HeaderBuilder::create("name", "ecotone.eventSourcing.manager.name")],
             [GatewayHeaderBuilder::create("name", "ecotone.eventSourcing.manager.name")],
             $eventSourcingConfiguration,
-            $configuration
+            $configuration,
+            "ecotone:es:reset-projection",
+            [ConsoleCommandParameter::create("name")]
         );
 
         $this->registerProjectionManagerAction(
@@ -322,7 +327,9 @@ class EventSourcingModule extends NoExternalConfigurationModule
             [HeaderBuilder::create("name", "ecotone.eventSourcing.manager.name")],
             [GatewayHeaderBuilder::create("name", "ecotone.eventSourcing.manager.name")],
             $eventSourcingConfiguration,
-            $configuration
+            $configuration,
+            "ecotone:es:stop-projection",
+            [ConsoleCommandParameter::create("name")]
         );
 
         $this->registerProjectionManagerAction(
@@ -374,15 +381,15 @@ class EventSourcingModule extends NoExternalConfigurationModule
     public function getModuleExtensions(array $serviceExtensions): array
     {
         foreach ($serviceExtensions as $serviceExtension) {
-            if ($serviceExtension instanceof ProophRepositoryBuilder) {
+            if ($serviceExtension instanceof EventSourcingRepositoryBuilder) {
                 return [];
             }
         }
 
-        return [ProophRepositoryBuilder::create(EventSourcingConfiguration::createWithDefaults())];
+        return [EventSourcingRepositoryBuilder::create(EventSourcingConfiguration::createWithDefaults())];
     }
 
-    private function registerProjectionManagerAction(string $methodName, array $endpointConverters, array $gatewayConverters, EventSourcingConfiguration $eventSourcingConfiguration, Configuration $configuration): void
+    private function registerProjectionManagerAction(string $methodName, array $endpointConverters, array $gatewayConverters, EventSourcingConfiguration $eventSourcingConfiguration, Configuration $configuration, ?string $consoleCommandName = null, array $consoleCommandParameters = []): void
     {
         $messageHandlerBuilder = ProjectionManagerBuilder::create($methodName, $endpointConverters, $eventSourcingConfiguration);
         $configuration->registerMessageHandler($messageHandlerBuilder);
@@ -390,6 +397,14 @@ class EventSourcingModule extends NoExternalConfigurationModule
             GatewayProxyBuilder::create($eventSourcingConfiguration->getProjectManagerReferenceName(), ProjectionManager::class, $methodName, $messageHandlerBuilder->getInputMessageChannelName())
                 ->withParameterConverters($gatewayConverters)
         );
+
+        if ($consoleCommandName) {
+            $configuration->registerConsoleCommand(ConsoleCommandConfiguration::create(
+                $messageHandlerBuilder->getInputMessageChannelName(),
+                $consoleCommandName,
+                $consoleCommandParameters
+            ));
+        }
     }
 
     private function registerEventStoreAction(string $methodName, array $endpointConverters, array $gatewayConverters, EventSourcingConfiguration $eventSourcingConfiguration, Configuration $configuration): void
