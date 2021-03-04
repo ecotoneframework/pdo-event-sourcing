@@ -34,7 +34,7 @@ class EventMapper implements MessageFactory
             $eventType = $this->nameToEventMapping[$messageName];
         }
 
-        return new ProophEvent(
+        return new ProophMessage(
             Uuid::fromString($messageData['uuid']),
             $messageData['created_at'],
             $messageData['payload'],

@@ -12,7 +12,7 @@ use Prooph\Common\Messaging\Message;
 use Ramsey\Uuid\Uuid;
 use Ramsey\Uuid\UuidInterface;
 
-class ProophEvent implements Message
+class ProophMessage implements Message
 {
     private UuidInterface $messageId;
     private DateTimeImmutable $createdAt;

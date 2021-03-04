@@ -51,7 +51,6 @@ class LazyProophEventStore implements EventStore
     private ReferenceSearchService $referenceSearchService;
     private MessageFactory $messageFactory;
     private MessageConverter $messageConverter;
-    private int $eventLoadBatchSize;
     private bool $requireInitialization;
     private array $ensuredExistingStreams = [];
     private EventSourcingConfiguration $eventSourcingConfiguration;

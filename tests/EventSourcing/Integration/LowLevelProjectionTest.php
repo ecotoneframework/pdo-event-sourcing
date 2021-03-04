@@ -7,7 +7,7 @@ namespace Test\Ecotone\EventSourcing\Integration;
 use Ecotone\EventSourcing\Event;
 use Ecotone\EventSourcing\LazyProophEventStore;
 use Ecotone\EventSourcing\LazyProophProjectionManager;
-use Ecotone\EventSourcing\ProophEvent;
+use Ecotone\EventSourcing\ProophMessage;
 use Ecotone\EventSourcing\EcotoneEventStoreProophWrapper;
 use Prooph\EventStore\Pdo\Projection\PostgresProjectionManager;
 use Prooph\EventStore\StreamName;
@@ -30,7 +30,7 @@ class LowLevelProjectionTest extends EventSourcingMessagingTest
             ->createProjection("tickets_list")
             ->fromStream("tickets")
             ->when([
-                $eventName => function($state, ProophEvent $event) {
+                $eventName => function($state, ProophMessage $event) {
                     var_dump($event);
                     die("test");
                 }

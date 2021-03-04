@@ -10,14 +10,14 @@ interface EventStore
     public function updateStreamMetadata(string $streamName, array $newMetadata): void;
 
     /**
-     * @param Event[]|object[]|array[] $streamEvents
+     * @param Event[]|object[]|array[] $streamStreamEvents
      * @param string[] $streamMetadata
      */
-    public function create(string $streamName, array $streamEvents, array $streamMetadata): void;
+    public function create(string $streamName, array $streamStreamEvents, array $streamMetadata): void;
     /**
-     * @param Event[]|object[]|array[] $streamEvents
+     * @param Event[]|object[]|array[] $streamStreamEvents
      */
-    public function appendTo(string $streamName, array $streamEvents): void;
+    public function appendTo(string $streamName, array $streamStreamEvents): void;
 
     public function delete(string $streamName): void;
 
@@ -32,7 +32,8 @@ interface EventStore
         string $streamName,
         int $fromNumber = 1,
         int $count = null,
-        MetadataMatcher $metadataMatcher = null
+        MetadataMatcher $metadataMatcher = null,
+        bool $deserialize = true
     ): iterable;
 
     /**
@@ -42,7 +43,8 @@ interface EventStore
         string $streamName,
         int $fromNumber = null,
         int $count = null,
-        MetadataMatcher $metadataMatcher = null
+        MetadataMatcher $metadataMatcher = null,
+        bool $deserialize = true
     ): iterable;
 
     /**

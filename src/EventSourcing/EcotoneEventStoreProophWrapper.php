@@ -53,9 +53,9 @@ class EcotoneEventStoreProophWrapper implements EventStore
     /**
      * @inheritDoc
      */
-    public function create(string $streamName, array $events, array $streamMetadata): void
+    public function create(string $streamName, array $streamEvents, array $streamMetadata): void
     {
-        $this->eventStore->create(new Stream(new StreamName($streamName), $this->convertProophEvents($events), $streamMetadata));
+        $this->eventStore->create(new Stream(new StreamName($streamName), $this->convertProophEvents($streamEvents), $streamMetadata));
     }
 
     /**
@@ -72,7 +72,7 @@ class EcotoneEventStoreProophWrapper implements EventStore
                 $metadata = $eventToConvert->getMetadata();
             }
 
-            $proophEvents[] = new ProophEvent(
+            $proophEvents[] = new ProophMessage(
                 Uuid::fromString($metadata[MessageHeaders::MESSAGE_ID]),
                 new DateTimeImmutable("@" . $metadata[MessageHeaders::TIMESTAMP], new DateTimeZone('UTC')),
                 is_array($payload) ? $payload : $this->conversionService->convert($payload, TypeDescriptor::createFromVariable($payload), MediaType::createApplicationXPHP(), TypeDescriptor::createArrayType(), MediaType::createApplicationXPHP()),
@@ -99,9 +99,9 @@ class EcotoneEventStoreProophWrapper implements EventStore
         return $this->getWrappedEventStore()->getWrappedConnection();
     }
 
-    public function appendTo(string $streamName, array $events): void
+    public function appendTo(string $streamName, array $streamEvents): void
     {
-        $this->eventStore->appendTo(new StreamName($streamName), $this->convertProophEvents($events));
+        $this->eventStore->appendTo(new StreamName($streamName), $this->convertProophEvents($streamEvents));
     }
 
     public function delete(string $streamName): void
@@ -140,7 +140,7 @@ class EcotoneEventStoreProophWrapper implements EventStore
         $events = [];
         $sourcePHPType = TypeDescriptor::createArrayType();
         $PHPMediaType = MediaType::createApplicationXPHP();
-        /** @var ProophEvent $event */
+        /** @var ProophMessage $event */
         while ($event = $streamEvents->current()) {
             $eventName = TypeDescriptor::create($this->eventMapper->mapNameToEventType($event->messageName()));
             $events[] = Event::createWithType(
