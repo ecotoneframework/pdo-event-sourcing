@@ -23,9 +23,9 @@ class BasketList
     }
 
     #[EventHandler(ProductWasAddedToBasket::EVENT_NAME)]
-    public function addProduct(array $event) : void
+    public function addProduct(ProductWasAddedToBasket $event) : void
     {
-        $this->basketsList[$event["id"]][] = $event["productName"];
+        $this->basketsList[$event->getId()][] = $event->getProductName();
     }
 
     #[QueryHandler("getALlBaskets")]

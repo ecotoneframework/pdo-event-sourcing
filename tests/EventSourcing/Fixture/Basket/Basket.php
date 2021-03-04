@@ -40,7 +40,7 @@ class Basket
         return $basket;
     }
 
-    #[CommandHandler("basket.addProduct")]
+    #[CommandHandler]
     public function addProduct(AddProduct $command) : void
     {
         $this->recordThat(new ProductWasAddedToBasket($this->id, $command->getProductName()));

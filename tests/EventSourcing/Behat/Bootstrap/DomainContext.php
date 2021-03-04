@@ -20,6 +20,7 @@ use PHPUnit\Framework\TestCase;
 use Ramsey\Uuid\Uuid;
 use Test\Ecotone\EventSourcing\Fixture\Basket\Basket;
 use Test\Ecotone\EventSourcing\Fixture\Basket\BasketEventConverter;
+use Test\Ecotone\EventSourcing\Fixture\Basket\Command\AddProduct;
 use Test\Ecotone\EventSourcing\Fixture\Basket\Command\CreateBasket;
 use Test\Ecotone\EventSourcing\Fixture\Basket\Projection\BasketList;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Command\CloseTicket;
@@ -192,10 +193,11 @@ class DomainContext extends TestCase implements Context
     }
 
     /**
-     * @When I add product :arg1 to basket with id :arg2
+     * @When I add product :name to basket with id :basketId
      */
-    public function iAddProductToBasketWithId($arg1, $arg2)
+    public function iAddProductToBasketWithId(string $name, string $basketId)
     {
-        throw new PendingException();
+        $this->getCommandBus()->send(new AddProduct($basketId, $name));
+        self::$messagingSystem->runAsynchronouslyRunningEndpoint(BasketList::PROJECTION_NAME);
     }
 }
