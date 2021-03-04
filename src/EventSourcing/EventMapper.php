@@ -27,12 +27,14 @@ class EventMapper implements MessageFactory
         return new self([],[]);
     }
 
+    public static function createWith(array $eventToNameMapping, array $nameToEventMapping) : static
+    {
+        return new self($eventToNameMapping, $nameToEventMapping);
+    }
+
     public function createMessageFromArray(string $messageName, array $messageData): Message
     {
         $eventType = $messageName;
-        if (array_key_exists($messageName, $this->nameToEventMapping)) {
-            $eventType = $this->nameToEventMapping[$messageName];
-        }
 
         return new ProophMessage(
             Uuid::fromString($messageData['uuid']),

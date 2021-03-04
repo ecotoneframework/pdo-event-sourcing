@@ -18,6 +18,10 @@ use Enqueue\Dbal\DbalConnectionFactory;
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 use Ramsey\Uuid\Uuid;
+use Test\Ecotone\EventSourcing\Fixture\Basket\Basket;
+use Test\Ecotone\EventSourcing\Fixture\Basket\BasketEventConverter;
+use Test\Ecotone\EventSourcing\Fixture\Basket\Command\CreateBasket;
+use Test\Ecotone\EventSourcing\Fixture\Basket\Projection\BasketList;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Command\CloseTicket;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Command\RegisterTicket;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Projection\InProgressTicketList;
@@ -40,6 +44,10 @@ class DomainContext extends TestCase implements Context
             case "Test\Ecotone\EventSourcing\Fixture\Ticket":
             {
                 $objects = [new TicketEventConverter(), new InProgressTicketList(self::$connection)];
+                break;
+            }
+            case "Test\Ecotone\EventSourcing\Fixture\Basket": {
+                $objects = [new BasketEventConverter(), new BasketList()];
                 break;
             }
             default:
@@ -156,5 +164,38 @@ class DomainContext extends TestCase implements Context
     public function iStopTheProjectionForInProgressTickets()
     {
         self::$messagingSystem->runConsoleCommand(EventSourcingModule::ECOTONE_ES_STOP_PROJECTION, ["name" => InProgressTicketList::IN_PROGRESS_TICKET_PROJECTION]);
+    }
+
+    /**
+     * @When I create basket with id :id
+     */
+    public function iCreateBasketWithId(string $id)
+    {
+        $this->getCommandBus()->send(new CreateBasket($id));
+        self::$messagingSystem->runAsynchronouslyRunningEndpoint(BasketList::PROJECTION_NAME);
+    }
+
+    /**
+     * @Then I should see baskets:
+     */
+    public function iShouldSeeBaskets(TableNode $table)
+    {
+        $resultsSet = [];
+        foreach ($table->getHash() as $row) {
+            $resultsSet[$row["id"]] = \json_decode($row["products"], true, 512, JSON_THROW_ON_ERROR);
+        }
+
+        $this->assertEquals(
+            $resultsSet,
+            $this->getQueryBus()->sendWithRouting("getALlBaskets", [])
+        );
+    }
+
+    /**
+     * @When I add product :arg1 to basket with id :arg2
+     */
+    public function iAddProductToBasketWithId($arg1, $arg2)
+    {
+        throw new PendingException();
     }
 }

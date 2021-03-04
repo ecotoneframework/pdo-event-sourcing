@@ -27,17 +27,17 @@ class EventSourcingRepository implements EventSourcedRepository
 {
     private HeaderMapper $headerMapper;
     private array $handledAggregateClassNames;
-    private array $aggregateClassToStreamName;
     private EcotoneEventStoreProophWrapper $eventStore;
     private EventSourcingConfiguration $eventSourcingConfiguration;
+    private AggregateStreamMapping $aggregateStreamMapping;
 
-    public function __construct(EcotoneEventStoreProophWrapper $eventStore, array $handledAggregateClassNames, HeaderMapper $headerMapper, array $aggregateClassStreamNames, EventSourcingConfiguration $eventSourcingConfiguration)
+    public function __construct(EcotoneEventStoreProophWrapper $eventStore, array $handledAggregateClassNames, HeaderMapper $headerMapper, EventSourcingConfiguration $eventSourcingConfiguration, AggregateStreamMapping $aggregateStreamMapping)
     {
         $this->eventStore = $eventStore;
         $this->headerMapper = $headerMapper;
         $this->handledAggregateClassNames = $handledAggregateClassNames;
-        $this->aggregateClassToStreamName = $aggregateClassStreamNames;
         $this->eventSourcingConfiguration = $eventSourcingConfiguration;
+        $this->aggregateStreamMapping = $aggregateStreamMapping;
     }
 
     public function canHandle(string $aggregateClassName): bool
@@ -101,8 +101,8 @@ class EventSourcingRepository implements EventSourcedRepository
     private function getStreamName(string $aggregateClassName, mixed $aggregateId): StreamName
     {
         $streamName = $aggregateClassName;
-        if (array_key_exists($aggregateClassName, $this->aggregateClassToStreamName)) {
-            $streamName =  $this->aggregateClassToStreamName[$aggregateClassName];
+        if (array_key_exists($aggregateClassName, $this->aggregateStreamMapping->getAggregateToStreamMapping())) {
+            $streamName =  $this->aggregateStreamMapping->getAggregateToStreamMapping()[$aggregateClassName];
         }
 
         if ($this->eventSourcingConfiguration->isUsingAggregateStreamStrategy()) {

@@ -1,0 +1,36 @@
+<?php
+
+
+namespace Test\Ecotone\EventSourcing\Fixture\Basket\Projection;
+
+use Ecotone\EventSourcing\Attribute\Projection;
+use Ecotone\Modelling\Attribute\EventHandler;
+use Ecotone\Modelling\Attribute\QueryHandler;
+use Test\Ecotone\EventSourcing\Fixture\Basket\Basket;
+use Test\Ecotone\EventSourcing\Fixture\Basket\Event\BasketWasCreated;
+use Test\Ecotone\EventSourcing\Fixture\Basket\Event\ProductWasAddedToBasket;
+
+#[Projection(self::PROJECTION_NAME, Basket::BASKET_STREAM)]
+class BasketList
+{
+    const PROJECTION_NAME = "basketList";
+    private array $basketsList = [];
+
+    #[EventHandler(BasketWasCreated::EVENT_NAME)]
+    public function addBasket(array $event) : void
+    {
+        $this->basketsList[$event["id"]] = [];
+    }
+
+    #[EventHandler(ProductWasAddedToBasket::EVENT_NAME)]
+    public function addProduct(array $event) : void
+    {
+        $this->basketsList[$event["id"]][] = $event["productName"];
+    }
+
+    #[QueryHandler("getALlBaskets")]
+    public function getAllBaskets() : array
+    {
+        return $this->basketsList;
+    }
+}

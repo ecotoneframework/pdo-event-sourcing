@@ -30,7 +30,6 @@ class EventSourcingRepositoryBuilder implements RepositoryBuilder
 {
     private array $handledAggregateClassNames = [];
     private array $headerMapper = [];
-    private array $aggregateClassToStreamName = [];
     private EventSourcingConfiguration $eventSourcingConfiguration;
 
     private function __construct(EventSourcingConfiguration $eventSourcingConfiguration)
@@ -67,13 +66,6 @@ class EventSourcingRepositoryBuilder implements RepositoryBuilder
         return true;
     }
 
-    public function withAggregateClassToStreamMapping(array $aggregateClassToStreamName) : static
-    {
-        $this->aggregateClassToStreamName = $aggregateClassToStreamName;
-
-        return $this;
-    }
-
     public function build(ChannelResolver $channelResolver, ReferenceSearchService $referenceSearchService): EventSourcedRepository
     {
         /** @var ConversionService $conversionService */
@@ -91,8 +83,8 @@ class EventSourcingRepositoryBuilder implements RepositoryBuilder
             ),
             $this->handledAggregateClassNames,
             $headerMapper,
-            [],
-            $this->eventSourcingConfiguration
+            $this->eventSourcingConfiguration,
+            $referenceSearchService->get(AggregateStreamMapping::class)
         );
     }
 }
