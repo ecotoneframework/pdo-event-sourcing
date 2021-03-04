@@ -48,11 +48,11 @@ abstract class EventSourcingMessagingTest extends TestCase
         return $this->dbalConnectionFactory;
     }
 
-    protected function getReferenceSearchServiceWithConnection(array $objects = [])
+    protected function getReferenceSearchServiceWithConnection(array $objects = [], bool $connectionAsRegistry = false)
     {
         return InMemoryReferenceSearchService::createWith(
             array_merge(
-                [DbalConnectionFactory::class => $this->getConnectionFactory()],
+                [DbalConnectionFactory::class => $this->getConnectionFactory($connectionAsRegistry)],
                 $objects
             )
         );

@@ -157,4 +157,37 @@ class EventSourcingRepositoryBuilderTest extends EventSourcingMessagingTest
         $this->assertEquals(1, $resultStream->getAggregateVersion());
         $this->assertEquals($secondTicketWasRegisteredEvent, $resultStream->getEvents()[0]->getEvent());
     }
+
+    public function test_handling_connection_as_registry()
+    {
+        $proophRepositoryBuilder = EventSourcingRepositoryBuilder::create(
+            EventSourcingConfiguration::createWithDefaults()
+                ->withPersistenceStrategy(LazyProophEventStore::SINGLE_STREAM_PERSISTENCE)
+        );
+
+        $ticketId = Uuid::uuid4()->toString();
+        $ticketWasRegisteredEvent = new TicketWasRegistered($ticketId, "Johny", "standard");
+        $ticketWasRegisteredEventAsArray = [
+            "ticketId" => $ticketId,
+            "assignedPerson" => "Johny",
+            "ticketType" => "standard"
+        ];
+
+        $repository = $proophRepositoryBuilder->build(InMemoryChannelResolver::createEmpty(), $this->getReferenceSearchServiceWithConnection([
+            EventMapper::class => EventMapper::createEmpty(),
+            AggregateStreamMapping::class => AggregateStreamMapping::createEmpty(),
+            ConversionService::REFERENCE_NAME => InMemoryConversionService::createWithoutConversion()
+                ->registerInPHPConversion($ticketWasRegisteredEvent, $ticketWasRegisteredEventAsArray)
+                ->registerInPHPConversion($ticketWasRegisteredEventAsArray, $ticketWasRegisteredEvent)
+        ], true));
+
+        $repository->save(["ticketId"=> $ticketId], Ticket::class, [$ticketWasRegisteredEvent], [
+            MessageHeaders::MESSAGE_ID => Uuid::uuid4()->toString(),
+            MessageHeaders::TIMESTAMP => 1610285647
+        ], 0);
+
+        $resultStream = $repository->findBy(Ticket::class, ["ticketId" => $ticketId]);
+        $this->assertEquals(1, $resultStream->getAggregateVersion());
+        $this->assertEquals($ticketWasRegisteredEvent, $resultStream->getEvents()[0]->getEvent());
+    }
 }
