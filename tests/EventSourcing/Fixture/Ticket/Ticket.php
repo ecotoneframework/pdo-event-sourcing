@@ -2,6 +2,7 @@
 
 namespace Test\Ecotone\EventSourcing\Fixture\Ticket;
 
+use Ecotone\EventSourcing\Attribute\Stream;
 use Ecotone\EventSourcing\Attribute\StreamName;
 use Ecotone\Modelling\Attribute\Aggregate;
 use Ecotone\Modelling\Attribute\AggregateFactory;
@@ -10,13 +11,15 @@ use Ecotone\Modelling\Attribute\CommandHandler;
 use Ecotone\Modelling\Attribute\EventSourcedAggregate;
 use Ecotone\Modelling\WithAggregateVersioning;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Command\ChangeAssignedPerson;
+use Test\Ecotone\EventSourcing\Fixture\Ticket\Command\CloseTicket;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Command\RegisterTicket;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Event\AssignedPersonWasChanged;
+use Test\Ecotone\EventSourcing\Fixture\Ticket\Event\TicketWasClosed;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Event\TicketWasRegistered;
 use Test\Ecotone\Modelling\Fixture\InterceptedCommandAggregate\EventWasLogged;
 
 #[EventSourcedAggregate]
-#[StreamName("ticket_stream")]
+#[Stream("ticket_stream")]
 class Ticket
 {
     use WithAggregateVersioning;
@@ -38,6 +41,12 @@ class Ticket
     public function changeAssignedPerson(ChangeAssignedPerson $command) : array
     {
         return [new AssignedPersonWasChanged($command->getTicketId(), $command->getAssignedPerson())];
+    }
+
+    #[CommandHandler]
+    public function close(CloseTicket $command) : array
+    {
+        return [new TicketWasClosed($this->ticketId)];
     }
 
     #[AggregateFactory]

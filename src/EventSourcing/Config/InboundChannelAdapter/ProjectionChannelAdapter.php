@@ -1,7 +1,7 @@
 <?php
 
 
-namespace Ecotone\EventSourcing\Config;
+namespace Ecotone\EventSourcing\Config\InboundChannelAdapter;
 
 
 class ProjectionChannelAdapter

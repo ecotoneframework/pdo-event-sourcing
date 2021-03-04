@@ -7,6 +7,7 @@ use Ecotone\Messaging\Attribute\Converter;
 use Ecotone\Messaging\Attribute\MediaTypeConverter;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Command\ChangeAssignedPerson;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Event\AssignedPersonWasChanged;
+use Test\Ecotone\EventSourcing\Fixture\Ticket\Event\TicketWasClosed;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Event\TicketWasRegistered;
 
 class TicketEventConverter
@@ -40,5 +41,19 @@ class TicketEventConverter
     public function toAssignedPersonWasChanged(array $event) : AssignedPersonWasChanged
     {
         return new AssignedPersonWasChanged($event["ticketId"], $event["assignedPerson"]);
+    }
+
+    #[Converter]
+    public function fromTicketWasClosed(TicketWasClosed $event) : array
+    {
+        return [
+            "ticketId" => $event->getTicketId()
+        ];
+    }
+
+    #[Converter]
+    public function toTicketWasClosed(array $event) : TicketWasClosed
+    {
+        return new TicketWasClosed($event["ticketId"]);
     }
 }

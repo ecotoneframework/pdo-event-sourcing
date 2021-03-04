@@ -29,13 +29,15 @@ class ProophRepository implements EventSourcedRepository
     private array $handledAggregateClassNames;
     private array $aggregateClassToStreamName;
     private EcotoneEventStoreProophWrapper $eventStore;
+    private EventSourcingConfiguration $eventSourcingConfiguration;
 
-    public function __construct(EcotoneEventStoreProophWrapper $eventStore, array $handledAggregateClassNames, HeaderMapper $headerMapper, array $aggregateClassStreamNames)
+    public function __construct(EcotoneEventStoreProophWrapper $eventStore, array $handledAggregateClassNames, HeaderMapper $headerMapper, array $aggregateClassStreamNames, EventSourcingConfiguration $eventSourcingConfiguration)
     {
         $this->eventStore = $eventStore;
         $this->headerMapper = $headerMapper;
         $this->handledAggregateClassNames = $handledAggregateClassNames;
         $this->aggregateClassToStreamName = $aggregateClassStreamNames;
+        $this->eventSourcingConfiguration = $eventSourcingConfiguration;
     }
 
     public function canHandle(string $aggregateClassName): bool
@@ -98,11 +100,15 @@ class ProophRepository implements EventSourcedRepository
 
     private function getStreamName(string $aggregateClassName, mixed $aggregateId): StreamName
     {
-        $prefix = $aggregateClassName;
+        $streamName = $aggregateClassName;
         if (array_key_exists($aggregateClassName, $this->aggregateClassToStreamName)) {
-            $prefix =  $this->aggregateClassToStreamName[$aggregateClassName];
+            $streamName =  $this->aggregateClassToStreamName[$aggregateClassName];
         }
 
-        return new StreamName($prefix . "-" . $aggregateId);
+        if ($this->eventSourcingConfiguration->isUsingAggregateStreamStrategy()) {
+            $streamName = $streamName . "-" . $aggregateId;
+        }
+
+        return new StreamName($streamName);
     }
 }

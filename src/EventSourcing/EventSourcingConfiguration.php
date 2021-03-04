@@ -16,7 +16,7 @@ class EventSourcingConfiguration
     private string $eventStoreReferenceName;
     private string $projectManagerReferenceName;
     private string $connectionReferenceName;
-    private string $persistenceStrategy = LazyProophEventStore::AGGREGATE_STREAM_PERSISTENCE;
+    private string $persistenceStrategy = LazyProophEventStore::SINGLE_STREAM_PERSISTENCE;
 
     private function __construct(string $connectionReferenceName = DbalConnectionFactory::class, string $eventStoreReferenceName = EventStore::class, string $projectManagerReferenceName = ProjectionManager::class)
     {
@@ -84,6 +84,16 @@ class EventSourcingConfiguration
     public function isInitializedOnStart(): bool
     {
         return $this->initializeOnStart;
+    }
+
+    public function isUsingSingleStreamStrategy() : bool
+    {
+        return $this->getPersistenceStrategy() === LazyProophEventStore::SINGLE_STREAM_PERSISTENCE;
+    }
+
+    public function isUsingAggregateStreamStrategy() : bool
+    {
+        return $this->getPersistenceStrategy() === LazyProophEventStore::AGGREGATE_STREAM_PERSISTENCE;
     }
 
     public function getPersistenceStrategy(): string

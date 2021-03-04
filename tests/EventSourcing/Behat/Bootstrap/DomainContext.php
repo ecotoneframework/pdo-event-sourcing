@@ -16,6 +16,7 @@ use Enqueue\Dbal\DbalConnectionFactory;
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 use Ramsey\Uuid\Uuid;
+use Test\Ecotone\EventSourcing\Fixture\Ticket\Command\CloseTicket;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Command\RegisterTicket;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Projection\InProgressTicketList;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\TicketEventConverter;
@@ -85,16 +86,29 @@ class DomainContext extends TestCase implements Context
     {
         $this->getCommandBus()->send(new RegisterTicket(
             $id,
-            $ticketType,
-            $assignedPerson
+            $assignedPerson,
+            $ticketType
         ));
+        self::$messagingSystem->runAsynchronouslyRunningEndpoint("inProgressTicketList");
     }
 
     /**
-     * @Then ticket I should see tickets:
+     * @Then ticket I should see in progress tickets:
      */
-    public function ticketIShouldSeeTickets(TableNode $table)
+    public function ticketIShouldSeeInProgressTickets(TableNode $table)
     {
-        throw new PendingException();
+        $this->assertEquals(
+            $table->getHash(),
+            $this->getQueryBus()->sendWithRouting("getInProgressTickets", [])
+        );
+    }
+
+    /**
+     * @When I close ticket with id :arg1
+     */
+    public function iCloseTicketWithId(string $ticketId)
+    {
+        $this->getCommandBus()->send(new CloseTicket($ticketId));
+        self::$messagingSystem->runAsynchronouslyRunningEndpoint("inProgressTicketList");
     }
 }

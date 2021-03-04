@@ -1,13 +1,12 @@
 <?php
 
 
-namespace Ecotone\EventSourcing\Config;
+namespace Ecotone\EventSourcing\Config\InboundChannelAdapter;
 
 
 use Ecotone\EventSourcing\LazyProophProjectionManager;
 use Ecotone\EventSourcing\ProjectionConfiguration;
 use Ecotone\Messaging\Gateway\MessagingEntrypoint;
-use Ecotone\Modelling\Attribute\IgnorePayload;
 use Prooph\Common\Messaging\Message;
 
 class ProjectionExecutor
@@ -21,7 +20,6 @@ class ProjectionExecutor
         $this->projectionConfiguration = $projectionConfiguration;
     }
 
-    #[IgnorePayload]
     public function execute(MessagingEntrypoint $messagingEntrypoint) : void
     {
         if ($this->projectionConfiguration->getProjectionLifeCycleConfiguration()->getInitializationRequestChannel()) {
@@ -30,19 +28,20 @@ class ProjectionExecutor
 
         $handlers = [];
         foreach ($this->projectionConfiguration->getProjectionEventHandlerChannels() as $eventName => $targetChannel) {
-            $handlers[$eventName] = function ($state, Message $event) use ($messagingEntrypoint, $targetChannel) : mixed {
+            $projectionConfiguration = $this->projectionConfiguration;
+            $handlers[$eventName] = function ($state, Message $event) use ($messagingEntrypoint, $targetChannel, $projectionConfiguration) : mixed {
                 $result = $messagingEntrypoint->sendWithHeaders(
                     $event->payload(),
-                    array_merge($event->metadata(), ["projection.state" => $state, "projection.name" => $this->projectionConfiguration->getProjectionName()]),
+                    array_merge($event->metadata(), ["projection.state" => $state, "projection.name" => $projectionConfiguration->getProjectionName()]),
                     $targetChannel
                 );
 
-                return $this->projectionConfiguration->isKeepingStateBetweenEvents() ? $result : null;
+                return $projectionConfiguration->isKeepingStateBetweenEvents() ? $result : null;
             };
         }
 
-        $projection = $this->lazyProophProjectionManager->createReadModelProjection($this->projectionConfiguration->getProjectionName(), new ProophReadModel(), $this->projectionConfiguration->getProjectionOptions())
-                        ->when($handlers);
+        $readModel = new ProophReadModel($messagingEntrypoint, $this->projectionConfiguration->getProjectionLifeCycleConfiguration()->getInitializationRequestChannel(), $this->projectionConfiguration->getProjectionLifeCycleConfiguration()->getResetRequestChannel(), $this->projectionConfiguration->getProjectionLifeCycleConfiguration()->getDeleteRequestChannel());
+        $projection = $this->lazyProophProjectionManager->createReadModelProjection($this->projectionConfiguration->getProjectionName(), $readModel, $this->projectionConfiguration->getProjectionOptions());
         if  ($this->projectionConfiguration->isWithAllStreams()) {
             $projection = $projection->fromAll();
         }else if ($this->projectionConfiguration->getCategories()) {
@@ -50,6 +49,7 @@ class ProjectionExecutor
         }else if ($this->projectionConfiguration->getStreamNames()) {
             $projection = $projection->fromStreams(...$this->projectionConfiguration->getStreamNames());
         }
+        $projection = $projection->when($handlers);
 
         $projection->run(false);
     }

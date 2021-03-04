@@ -91,7 +91,8 @@ class ProophRepositoryBuilder implements RepositoryBuilder
             ),
             $this->handledAggregateClassNames,
             $headerMapper,
-            []
+            [],
+            $this->eventSourcingConfiguration
         );
     }
 }
