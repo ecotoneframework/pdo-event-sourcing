@@ -19,7 +19,6 @@ use Test\Ecotone\EventSourcing\Fixture\Ticket\Event\TicketWasRegistered;
 use Test\Ecotone\Modelling\Fixture\InterceptedCommandAggregate\EventWasLogged;
 
 #[EventSourcedAggregate]
-#[Stream("ticket_stream")]
 class Ticket
 {
     use WithAggregateVersioning;
