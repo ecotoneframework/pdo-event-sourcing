@@ -14,10 +14,10 @@ use Test\Ecotone\EventSourcing\Fixture\Ticket\Event\TicketWasClosed;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Event\TicketWasRegistered;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Ticket;
 
-#[Projection(self::IN_PROGRESS_TICKET_LIST, Ticket::class)]
+#[Projection(self::IN_PROGRESS_TICKET_PROJECTION, Ticket::class, options: ["lock_timeout_ms" => 0])]
 class InProgressTicketList
 {
-    const IN_PROGRESS_TICKET_LIST = "inProgressTicketList";
+    const IN_PROGRESS_TICKET_PROJECTION = "inProgressTicketList";
     private Connection $connection;
 
     public function __construct(Connection $connection)

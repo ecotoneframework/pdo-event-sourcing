@@ -42,6 +42,9 @@ use Ramsey\Uuid\Uuid;
 #[ModuleAnnotation]
 class EventSourcingModule extends NoExternalConfigurationModule
 {
+    const ECOTONE_ES_STOP_PROJECTION = "ecotone:es:stop-projection";
+    const ECOTONE_ES_RESET_PROJECTION = "ecotone:es:reset-projection";
+    const ECOTONE_ES_DELETE_PROJECTION = "ecotone:es:delete-projection";
     /**
      * @var ProjectionConfiguration[]
      */
@@ -308,8 +311,8 @@ class EventSourcingModule extends NoExternalConfigurationModule
             [GatewayHeaderBuilder::create("name", "ecotone.eventSourcing.manager.name"), GatewayHeaderBuilder::create("deleteEmittedEvents", "ecotone.eventSourcing.manager.deleteEmittedEvents")],
             $eventSourcingConfiguration,
             $configuration,
-            "ecotone:es:delete-projection",
-            [ConsoleCommandParameter::create("name"), ConsoleCommandParameter::createWithDefaultValue("deleteEmittedEvents", true)]
+            self::ECOTONE_ES_DELETE_PROJECTION,
+            [ConsoleCommandParameter::create("name", "ecotone.eventSourcing.manager.name"), ConsoleCommandParameter::createWithDefaultValue("deleteEmittedEvents", "ecotone.eventSourcing.manager.deleteEmittedEvents",true)]
         );
 
         $this->registerProjectionManagerAction(
@@ -318,8 +321,8 @@ class EventSourcingModule extends NoExternalConfigurationModule
             [GatewayHeaderBuilder::create("name", "ecotone.eventSourcing.manager.name")],
             $eventSourcingConfiguration,
             $configuration,
-            "ecotone:es:reset-projection",
-            [ConsoleCommandParameter::create("name")]
+            self::ECOTONE_ES_RESET_PROJECTION,
+            [ConsoleCommandParameter::create("name", "ecotone.eventSourcing.manager.name")]
         );
 
         $this->registerProjectionManagerAction(
@@ -328,8 +331,8 @@ class EventSourcingModule extends NoExternalConfigurationModule
             [GatewayHeaderBuilder::create("name", "ecotone.eventSourcing.manager.name")],
             $eventSourcingConfiguration,
             $configuration,
-            "ecotone:es:stop-projection",
-            [ConsoleCommandParameter::create("name")]
+            self::ECOTONE_ES_STOP_PROJECTION,
+            [ConsoleCommandParameter::create("name", "ecotone.eventSourcing.manager.name")]
         );
 
         $this->registerProjectionManagerAction(

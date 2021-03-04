@@ -21,7 +21,7 @@ class MessagingConfiguration
     #[ServiceContext]
     public function setMaximumOneRunForProjections()
     {
-        return PollingMetadata::create(InProgressTicketList::IN_PROGRESS_TICKET_LIST)
+        return PollingMetadata::create(InProgressTicketList::IN_PROGRESS_TICKET_PROJECTION)
                     ->setExecutionAmountLimit(3)
                     ->setExecutionTimeLimitInMilliseconds(300);
     }
