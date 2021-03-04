@@ -185,32 +185,39 @@ class EventSourcingModule extends NoExternalConfigurationModule
     {
         $moduleReferenceSearchService->store(EventMapper::class, $this->eventMapper);
         $moduleReferenceSearchService->store(AggregateStreamMapping::class, $this->aggregateToStreamMapping);
-        $eventSourcingConfiguration = EventSourcingConfiguration::createWithDefaults();
+
+        $eventSourcingConfigurations = [];
         foreach ($extensionObjects as $extensionObject) {
             if ($extensionObject instanceof EventSourcingConfiguration) {
-                $eventSourcingConfiguration = $extensionObject;
+                $eventSourcingConfigurations[] = $extensionObject;
             }
         }
 
-        $lazyProophProjectionManager = null;
-        foreach ($this->projectionConfigurations as $projectionConfiguration) {
-            $generatedChannelName = Uuid::uuid4()->toString();
-            $messageHandlerBuilder = new ProjectionExecutorBuilder($eventSourcingConfiguration, $projectionConfiguration);
-            $messageHandlerBuilder = $messageHandlerBuilder->withInputChannelName($generatedChannelName);
-            $configuration->registerMessageHandler($messageHandlerBuilder);
-
-            $configuration->registerConsumer(InboundChannelAdapterBuilder::createWithDirectObject(
-                $generatedChannelName,
-                new ProjectionChannelAdapter(),
-                "run"
-            )->withEndpointId($projectionConfiguration->getProjectionName()));
-        }
-        foreach ($this->projectionLifeCycleServiceActivators as $serviceActivator) {
-            $configuration->registerMessageHandler($serviceActivator);
+        if (!$eventSourcingConfigurations) {
+            $eventSourcingConfigurations[] = EventSourcingConfiguration::createWithDefaults();
         }
 
-        $this->registerEventStore($configuration, $eventSourcingConfiguration);
-        $this->registerProjectionManager($configuration, $eventSourcingConfiguration);
+        foreach ($eventSourcingConfigurations as $eventSourcingConfiguration) {
+            $lazyProophProjectionManager = null;
+            foreach ($this->projectionConfigurations as $projectionConfiguration) {
+                $generatedChannelName = Uuid::uuid4()->toString();
+                $messageHandlerBuilder = new ProjectionExecutorBuilder($eventSourcingConfiguration, $projectionConfiguration);
+                $messageHandlerBuilder = $messageHandlerBuilder->withInputChannelName($generatedChannelName);
+                $configuration->registerMessageHandler($messageHandlerBuilder);
+
+                $configuration->registerConsumer(InboundChannelAdapterBuilder::createWithDirectObject(
+                    $generatedChannelName,
+                    new ProjectionChannelAdapter(),
+                    "run"
+                )->withEndpointId($projectionConfiguration->getProjectionName()));
+            }
+            foreach ($this->projectionLifeCycleServiceActivators as $serviceActivator) {
+                $configuration->registerMessageHandler($serviceActivator);
+            }
+
+            $this->registerEventStore($configuration, $eventSourcingConfiguration);
+            $this->registerProjectionManager($configuration, $eventSourcingConfiguration);
+        }
     }
 
     private function registerEventStore(Configuration $configuration, EventSourcingConfiguration $eventSourcingConfiguration) : void
