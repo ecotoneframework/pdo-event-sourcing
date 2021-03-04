@@ -30,7 +30,7 @@
     "require": {
         "php": ">=8.0",
         "ecotone/dbal": "^1.0",
-        "prooph/pdo-event-store": "^1.12"
+        "ecotone/prooph-pdo-event-store-fork": ">=1.14"
     },
     "require-dev": {
         "phpunit/phpunit": "^9.0",
