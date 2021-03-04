@@ -4,6 +4,7 @@
 namespace Test\Ecotone\EventSourcing\Integration;
 
 
+use Ecotone\EventSourcing\AggregateStreamMapping;
 use Ecotone\EventSourcing\EventMapper;
 use Ecotone\EventSourcing\EventSourcingConfiguration;
 use Ecotone\EventSourcing\LazyProophEventStore;
@@ -39,6 +40,7 @@ class EventSourcingRepositoryBuilderTest extends EventSourcingMessagingTest
 
         $repository = $proophRepositoryBuilder->build(InMemoryChannelResolver::createEmpty(), $this->getReferenceSearchServiceWithConnection([
             EventMapper::class => EventMapper::createEmpty(),
+            AggregateStreamMapping::class => AggregateStreamMapping::createEmpty(),
             ConversionService::REFERENCE_NAME => InMemoryConversionService::createWithoutConversion()
                 ->registerInPHPConversion($ticketWasRegisteredEvent, $ticketWasRegisteredEventAsArray)
                 ->registerInPHPConversion($ticketWasRegisteredEventAsArray, $ticketWasRegisteredEvent)
@@ -78,6 +80,7 @@ class EventSourcingRepositoryBuilderTest extends EventSourcingMessagingTest
 
         $repository = $proophRepositoryBuilder->build(InMemoryChannelResolver::createEmpty(), $this->getReferenceSearchServiceWithConnection([
             EventMapper::class => EventMapper::createEmpty(),
+            AggregateStreamMapping::class => AggregateStreamMapping::createEmpty(),
             ConversionService::REFERENCE_NAME => InMemoryConversionService::createWithoutConversion()
                 ->registerInPHPConversion($firstTicketWasRegisteredEvent, $firstTicketWasRegisteredEventAsArray)
                 ->registerInPHPConversion($firstTicketWasRegisteredEventAsArray, $firstTicketWasRegisteredEvent)
@@ -128,6 +131,7 @@ class EventSourcingRepositoryBuilderTest extends EventSourcingMessagingTest
 
         $repository = $proophRepositoryBuilder->build(InMemoryChannelResolver::createEmpty(), $this->getReferenceSearchServiceWithConnection([
             EventMapper::class => EventMapper::createEmpty(),
+            AggregateStreamMapping::class => AggregateStreamMapping::createEmpty(),
             ConversionService::REFERENCE_NAME => InMemoryConversionService::createWithoutConversion()
                 ->registerInPHPConversion($firstTicketWasRegisteredEvent, $firstTicketWasRegisteredEventAsArray)
                 ->registerInPHPConversion($firstTicketWasRegisteredEventAsArray, $firstTicketWasRegisteredEvent)
