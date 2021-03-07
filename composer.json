@@ -1,5 +1,5 @@
 {
-    "name": "ecotone/prooph-event-sourcing",
+    "name": "ecotone/pdo-event-sourcing",
     "license": "MIT",
     "homepage": "https://docs.ecotone.tech/",
     "type": "library",
@@ -12,7 +12,7 @@
         }
     ],
     "keywords": ["dbal", "ecotone"],
-    "description": "Extends Ecotone with Event Sourcing using Prooph Event-Store",
+    "description": "Extends Ecotone with Event Sourcing using Prooph PDO Event Store",
     "autoload": {
         "psr-4": {
             "Ecotone\\": "src"
