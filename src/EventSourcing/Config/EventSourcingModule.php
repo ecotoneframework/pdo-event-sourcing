@@ -32,6 +32,7 @@ use Ecotone\Messaging\Handler\ClassDefinition;
 use Ecotone\Messaging\Handler\Gateway\GatewayProxyBuilder;
 use Ecotone\Messaging\Handler\Gateway\ParameterToMessageConverter\GatewayHeaderBuilder;
 use Ecotone\Messaging\Handler\Gateway\ParameterToMessageConverter\GatewayPayloadBuilder;
+use Ecotone\Messaging\Handler\InterfaceToCall;
 use Ecotone\Messaging\Handler\Processor\MethodInvoker\Converter\HeaderBuilder;
 use Ecotone\Messaging\Handler\Processor\MethodInvoker\Converter\PayloadBuilder;
 use Ecotone\Messaging\Handler\ServiceActivator\ServiceActivatorBuilder;
@@ -57,17 +58,20 @@ class EventSourcingModule extends NoExternalConfigurationModule
     private array $projectionLifeCycleServiceActivators = [];
     private EventMapper $eventMapper;
     private AggregateStreamMapping $aggregateToStreamMapping;
+    /** @var InterfaceToCall[] */
+    private array $relatedInterfaces = [];
 
     /**
      * @var ProjectionConfiguration[]
      * @var ServiceActivatorBuilder[]
      */
-    public function __construct(array $projectionConfigurations, array $projectionLifeCycleServiceActivators, EventMapper $eventMapper, AggregateStreamMapping $aggregateToStreamMapping)
+    public function __construct(array $projectionConfigurations, array $projectionLifeCycleServiceActivators, EventMapper $eventMapper, AggregateStreamMapping $aggregateToStreamMapping, array $relatedInterfaces)
     {
         $this->projectionConfigurations = $projectionConfigurations;
         $this->projectionLifeCycleServiceActivators = $projectionLifeCycleServiceActivators;
         $this->eventMapper = $eventMapper;
         $this->aggregateToStreamMapping = $aggregateToStreamMapping;
+        $this->relatedInterfaces = $relatedInterfaces;
     }
 
     public static function create(AnnotationFinder $annotationRegistrationService): static
@@ -96,6 +100,7 @@ class EventSourcingModule extends NoExternalConfigurationModule
         $projectionConfigurations = [];
         $projectionLifeCyclesServiceActivators = [];
 
+        $relatedInterfaces = [];
         foreach ($projectionClassNames as $projectionClassName) {
             $projectionLifeCycle = ProjectionLifeCycleConfiguration::create();
 
@@ -104,6 +109,7 @@ class EventSourcingModule extends NoExternalConfigurationModule
             $projectionDelete = TypeDescriptor::create(ProjectionDelete::class);
             $projectionReset = TypeDescriptor::create(ProjectionReset::class);
             foreach ($classDefinition->getPublicMethodNames() as $publicMethodName) {
+                $relatedInterfaces[] = InterfaceToCall::create($projectionClassName, $publicMethodName);
                 foreach ($annotationRegistrationService->getAnnotationsForMethod($projectionClassName, $publicMethodName) as $attribute) {
                     $attributeType = TypeDescriptor::createFromVariable($attribute);
                     if ($attributeType->equals($projectionInitialization)) {
@@ -178,13 +184,14 @@ class EventSourcingModule extends NoExternalConfigurationModule
             );
         }
 
-        return new self($projectionConfigurations, $projectionLifeCyclesServiceActivators, EventMapper::createWith($fromClassToNameMapping, $fromNameToClassMapping), AggregateStreamMapping::createWith($aggregateToStreamMapping));
+        return new self($projectionConfigurations, $projectionLifeCyclesServiceActivators, EventMapper::createWith($fromClassToNameMapping, $fromNameToClassMapping), AggregateStreamMapping::createWith($aggregateToStreamMapping), $relatedInterfaces);
     }
 
     public function prepare(Configuration $configuration, array $extensionObjects, ModuleReferenceSearchService $moduleReferenceSearchService): void
     {
         $moduleReferenceSearchService->store(EventMapper::class, $this->eventMapper);
         $moduleReferenceSearchService->store(AggregateStreamMapping::class, $this->aggregateToStreamMapping);
+        $configuration->registerRelatedInterfaces($this->relatedInterfaces);
 
         $eventSourcingConfigurations = [];
         foreach ($extensionObjects as $extensionObject) {
