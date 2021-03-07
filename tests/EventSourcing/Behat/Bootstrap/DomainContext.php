@@ -103,7 +103,7 @@ class DomainContext extends TestCase implements Context
             $assignedPerson,
             $ticketType
         ));
-        self::$messagingSystem->runAsynchronouslyRunningEndpoint(InProgressTicketList::IN_PROGRESS_TICKET_PROJECTION);
+        self::$messagingSystem->run(InProgressTicketList::IN_PROGRESS_TICKET_PROJECTION);
     }
 
     /**
@@ -123,7 +123,7 @@ class DomainContext extends TestCase implements Context
     public function iCloseTicketWithId(string $ticketId)
     {
         $this->getCommandBus()->send(new CloseTicket($ticketId));
-        self::$messagingSystem->runAsynchronouslyRunningEndpoint(InProgressTicketList::IN_PROGRESS_TICKET_PROJECTION);
+        self::$messagingSystem->run(InProgressTicketList::IN_PROGRESS_TICKET_PROJECTION);
     }
 
     /**
@@ -132,7 +132,7 @@ class DomainContext extends TestCase implements Context
     public function iDeleteProjectionForAllInProgressTickets()
     {
         self::$messagingSystem->runConsoleCommand(EventSourcingModule::ECOTONE_ES_DELETE_PROJECTION, ["name" => InProgressTicketList::IN_PROGRESS_TICKET_PROJECTION]);
-        self::$messagingSystem->runAsynchronouslyRunningEndpoint(InProgressTicketList::IN_PROGRESS_TICKET_PROJECTION);
+        self::$messagingSystem->run(InProgressTicketList::IN_PROGRESS_TICKET_PROJECTION);
     }
 
     /**
@@ -156,7 +156,7 @@ class DomainContext extends TestCase implements Context
     public function iResetTheProjectionForInProgressTickets()
     {
         self::$messagingSystem->runConsoleCommand(EventSourcingModule::ECOTONE_ES_RESET_PROJECTION, ["name" => InProgressTicketList::IN_PROGRESS_TICKET_PROJECTION]);
-        self::$messagingSystem->runAsynchronouslyRunningEndpoint(InProgressTicketList::IN_PROGRESS_TICKET_PROJECTION);
+        self::$messagingSystem->run(InProgressTicketList::IN_PROGRESS_TICKET_PROJECTION);
     }
 
     /**
@@ -173,7 +173,7 @@ class DomainContext extends TestCase implements Context
     public function iCreateBasketWithId(string $id)
     {
         $this->getCommandBus()->send(new CreateBasket($id));
-        self::$messagingSystem->runAsynchronouslyRunningEndpoint(BasketList::PROJECTION_NAME);
+        self::$messagingSystem->run(BasketList::PROJECTION_NAME);
     }
 
     /**
@@ -198,6 +198,6 @@ class DomainContext extends TestCase implements Context
     public function iAddProductToBasketWithId(string $name, string $basketId)
     {
         $this->getCommandBus()->send(new AddProduct($basketId, $name));
-        self::$messagingSystem->runAsynchronouslyRunningEndpoint(BasketList::PROJECTION_NAME);
+        self::$messagingSystem->run(BasketList::PROJECTION_NAME);
     }
 }
