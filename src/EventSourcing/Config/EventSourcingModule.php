@@ -60,18 +60,21 @@ class EventSourcingModule extends NoExternalConfigurationModule
     private AggregateStreamMapping $aggregateToStreamMapping;
     /** @var InterfaceToCall[] */
     private array $relatedInterfaces = [];
+    /** @var string[] */
+    private array $requiredReferences = [];
 
     /**
      * @var ProjectionConfiguration[]
      * @var ServiceActivatorBuilder[]
      */
-    public function __construct(array $projectionConfigurations, array $projectionLifeCycleServiceActivators, EventMapper $eventMapper, AggregateStreamMapping $aggregateToStreamMapping, array $relatedInterfaces)
+    public function __construct(array $projectionConfigurations, array $projectionLifeCycleServiceActivators, EventMapper $eventMapper, AggregateStreamMapping $aggregateToStreamMapping, array $relatedInterfaces, array $requiredReferences)
     {
         $this->projectionConfigurations = $projectionConfigurations;
         $this->projectionLifeCycleServiceActivators = $projectionLifeCycleServiceActivators;
         $this->eventMapper = $eventMapper;
         $this->aggregateToStreamMapping = $aggregateToStreamMapping;
         $this->relatedInterfaces = $relatedInterfaces;
+        $this->requiredReferences = $requiredReferences;
     }
 
     public static function create(AnnotationFinder $annotationRegistrationService): static
@@ -101,6 +104,7 @@ class EventSourcingModule extends NoExternalConfigurationModule
         $projectionLifeCyclesServiceActivators = [];
 
         $relatedInterfaces = [];
+        $requiredReferences = [];
         foreach ($projectionClassNames as $projectionClassName) {
             $projectionLifeCycle = ProjectionLifeCycleConfiguration::create();
 
@@ -112,11 +116,13 @@ class EventSourcingModule extends NoExternalConfigurationModule
                 $relatedInterfaces[] = InterfaceToCall::create($projectionClassName, $publicMethodName);
                 foreach ($annotationRegistrationService->getAnnotationsForMethod($projectionClassName, $publicMethodName) as $attribute) {
                     $attributeType = TypeDescriptor::createFromVariable($attribute);
+                    $referenceName = AnnotatedDefinitionReference::getReferenceForClassName($annotationRegistrationService, $projectionClassName);
+                    $requiredReferences[] = $referenceName;
                     if ($attributeType->equals($projectionInitialization)) {
                         $requestChannel = Uuid::uuid4()->toString();
                         $projectionLifeCycle = $projectionLifeCycle->withInitializationRequestChannel($requestChannel);
                         $projectionLifeCyclesServiceActivators[] = ServiceActivatorBuilder::create(
-                            AnnotatedDefinitionReference::getReferenceForClassName($annotationRegistrationService, $projectionClassName),
+                            $referenceName,
                             $publicMethodName
                         )->withInputChannelName($requestChannel);
                     }
@@ -124,7 +130,7 @@ class EventSourcingModule extends NoExternalConfigurationModule
                         $requestChannel = Uuid::uuid4()->toString();
                         $projectionLifeCycle = $projectionLifeCycle->withDeleteRequestChannel($requestChannel);
                         $projectionLifeCyclesServiceActivators[] = ServiceActivatorBuilder::create(
-                            AnnotatedDefinitionReference::getReferenceForClassName($annotationRegistrationService, $projectionClassName),
+                            $referenceName,
                             $publicMethodName
                         )->withInputChannelName($requestChannel);
                     }
@@ -132,7 +138,7 @@ class EventSourcingModule extends NoExternalConfigurationModule
                         $requestChannel = Uuid::uuid4()->toString();
                         $projectionLifeCycle = $projectionLifeCycle->withResetRequestChannel($requestChannel);
                         $projectionLifeCyclesServiceActivators[] = ServiceActivatorBuilder::create(
-                            AnnotatedDefinitionReference::getReferenceForClassName($annotationRegistrationService, $projectionClassName),
+                            $referenceName,
                             $publicMethodName
                         )->withInputChannelName($requestChannel);
                     }
@@ -170,7 +176,7 @@ class EventSourcingModule extends NoExternalConfigurationModule
             }
 
             $projectionConfigurations[$projectionAttribute->getName()] = $projectionConfiguration
-                                            ->withOptions($projectionAttribute->getOptions());
+                ->withOptions($projectionAttribute->getOptions());
         }
 
         foreach ($projectionEventHandlers as $projectionEventHandler) {
@@ -184,7 +190,7 @@ class EventSourcingModule extends NoExternalConfigurationModule
             );
         }
 
-        return new self($projectionConfigurations, $projectionLifeCyclesServiceActivators, EventMapper::createWith($fromClassToNameMapping, $fromNameToClassMapping), AggregateStreamMapping::createWith($aggregateToStreamMapping), $relatedInterfaces);
+        return new self($projectionConfigurations, $projectionLifeCyclesServiceActivators, EventMapper::createWith($fromClassToNameMapping, $fromNameToClassMapping), AggregateStreamMapping::createWith($aggregateToStreamMapping), $relatedInterfaces, array_unique($requiredReferences));
     }
 
     public function prepare(Configuration $configuration, array $extensionObjects, ModuleReferenceSearchService $moduleReferenceSearchService): void
@@ -192,6 +198,7 @@ class EventSourcingModule extends NoExternalConfigurationModule
         $moduleReferenceSearchService->store(EventMapper::class, $this->eventMapper);
         $moduleReferenceSearchService->store(AggregateStreamMapping::class, $this->aggregateToStreamMapping);
         $configuration->registerRelatedInterfaces($this->relatedInterfaces);
+        $configuration->requireReferences($this->requiredReferences);
 
         $eventSourcingConfigurations = [];
         foreach ($extensionObjects as $extensionObject) {
