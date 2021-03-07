@@ -106,6 +106,9 @@ class EventSourcingModule extends NoExternalConfigurationModule
         $relatedInterfaces = [];
         $requiredReferences = [];
         foreach ($projectionClassNames as $projectionClassName) {
+            $referenceName = AnnotatedDefinitionReference::getReferenceForClassName($annotationRegistrationService, $projectionClassName);
+            $requiredReferences[] = $referenceName;
+
             $projectionLifeCycle = ProjectionLifeCycleConfiguration::create();
 
             $classDefinition = ClassDefinition::createUsingAnnotationParser(TypeDescriptor::create($projectionClassName), $annotationRegistrationService);
@@ -116,8 +119,6 @@ class EventSourcingModule extends NoExternalConfigurationModule
                 $relatedInterfaces[] = InterfaceToCall::create($projectionClassName, $publicMethodName);
                 foreach ($annotationRegistrationService->getAnnotationsForMethod($projectionClassName, $publicMethodName) as $attribute) {
                     $attributeType = TypeDescriptor::createFromVariable($attribute);
-                    $referenceName = AnnotatedDefinitionReference::getReferenceForClassName($annotationRegistrationService, $projectionClassName);
-                    $requiredReferences[] = $referenceName;
                     if ($attributeType->equals($projectionInitialization)) {
                         $requestChannel = Uuid::uuid4()->toString();
                         $projectionLifeCycle = $projectionLifeCycle->withInitializationRequestChannel($requestChannel);
