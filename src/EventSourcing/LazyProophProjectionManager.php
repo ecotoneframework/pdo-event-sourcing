@@ -14,7 +14,6 @@ use Prooph\EventStore\Projection\ReadModelProjector;
 
 class LazyProophProjectionManager implements ProjectionManager
 {
-    private EcotoneEventStoreProophWrapper $eventStore;
     private ?ProjectionManager $lazyInitializedProjectionManager = null;
     private EventSourcingConfiguration $eventSourcingConfiguration;
     private ReferenceSearchService $referenceSearchService;
@@ -31,7 +30,7 @@ class LazyProophProjectionManager implements ProjectionManager
             return $this->lazyInitializedProjectionManager;
         }
 
-        $eventStore = new LazyProophEventStore($this->eventSourcingConfiguration, $this->referenceSearchService);
+        $eventStore = $this->getLazyProophEventStore();
 
         $this->lazyInitializedProjectionManager = match ($eventStore->getEventStoreType()) {
             LazyProophEventStore::EVENT_STORE_TYPE_POSTGRES => new PostgresProjectionManager($eventStore->getEventStore(), $eventStore->getWrappedConnection(), $this->eventSourcingConfiguration->getEventStreamTableName(), $this->eventSourcingConfiguration->getProjectionsTable()),
@@ -40,6 +39,11 @@ class LazyProophProjectionManager implements ProjectionManager
         };
 
         return $this->lazyInitializedProjectionManager;
+    }
+
+    public function ensureEventStoreIsPrepared() : void
+    {
+        $this->getLazyProophEventStore()->prepareEventStore();
     }
 
     public function createQuery(): Query
@@ -95,5 +99,10 @@ class LazyProophProjectionManager implements ProjectionManager
     public function fetchProjectionState(string $name): array
     {
         return $this->getProjectionManager()->fetchProjectionState($name);
+    }
+
+    private function getLazyProophEventStore(): LazyProophEventStore
+    {
+        return new LazyProophEventStore($this->eventSourcingConfiguration, $this->referenceSearchService);
     }
 }

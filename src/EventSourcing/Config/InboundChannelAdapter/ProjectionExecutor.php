@@ -51,6 +51,7 @@ class ProjectionExecutor
         }
         $projection = $projection->when($handlers);
 
+        $this->lazyProophProjectionManager->ensureEventStoreIsPrepared();
         $projection->run(false);
     }
 }
