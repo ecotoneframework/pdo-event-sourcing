@@ -69,7 +69,8 @@ class DomainContext extends TestCase implements Context
             ServiceConfiguration::createWithDefaults()
                 ->withNamespaces([$namespace])
                 ->withCacheDirectoryPath(sys_get_temp_dir() . DIRECTORY_SEPARATOR . Uuid::uuid4()->toString()),
-            []
+            [],
+            false
         );
 
         self::$connection->beginTransaction();
