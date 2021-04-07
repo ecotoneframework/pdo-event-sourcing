@@ -5,19 +5,34 @@ namespace Ecotone\EventSourcing\Config\InboundChannelAdapter;
 
 
 use Ecotone\EventSourcing\LazyProophProjectionManager;
-use Ecotone\EventSourcing\ProjectionConfiguration;
+use Ecotone\EventSourcing\ProjectionSetupConfiguration;
 use Ecotone\Messaging\Gateway\MessagingEntrypoint;
 use Prooph\Common\Messaging\Message;
 
 class ProjectionExecutor
 {
-    private LazyProophProjectionManager $lazyProophProjectionManager;
-    private ProjectionConfiguration $projectionConfiguration;
+    const PROJECTION_STATE            = "projection.state";
+    const PROJECTION_NAME             = "projection.name";
+    const PROJECTION_IS_POLLING = "projection.isPolling";
 
-    public function __construct(LazyProophProjectionManager $lazyProophProjectionManager, ProjectionConfiguration $projectionConfiguration)
+    private LazyProophProjectionManager $lazyProophProjectionManager;
+    private ProjectionSetupConfiguration $projectionConfiguration;
+
+    public function __construct(LazyProophProjectionManager $lazyProophProjectionManager, ProjectionSetupConfiguration $projectionConfiguration)
     {
         $this->lazyProophProjectionManager = $lazyProophProjectionManager;
         $this->projectionConfiguration = $projectionConfiguration;
+    }
+
+    public function beforeEventHandler(\Ecotone\Messaging\Message $message, MessagingEntrypoint $messagingEntrypoint) : ?\Ecotone\Messaging\Message
+    {
+        if ($this->shouldBePassedToEventHandler($message)) {
+            return $message;
+        }
+
+        $this->execute($messagingEntrypoint);
+
+        return null;
     }
 
     public function execute(MessagingEntrypoint $messagingEntrypoint) : void
@@ -27,13 +42,18 @@ class ProjectionExecutor
         }
 
         $handlers = [];
-        foreach ($this->projectionConfiguration->getProjectionEventHandlerChannels() as $eventName => $targetChannel) {
+        foreach ($this->projectionConfiguration->getProjectionEventHandlers() as $eventName => $projectionEventHandler) {
             $projectionConfiguration = $this->projectionConfiguration;
-            $handlers[$eventName] = function ($state, Message $event) use ($messagingEntrypoint, $targetChannel, $projectionConfiguration) : mixed {
+            $handlers[$eventName] = function ($state, Message $event) use ($messagingEntrypoint, $projectionEventHandler, $projectionConfiguration) : mixed {
                 $result = $messagingEntrypoint->sendWithHeaders(
                     $event->payload(),
-                    array_merge($event->metadata(), ["projection.state" => $state, "projection.name" => $projectionConfiguration->getProjectionName()]),
-                    $targetChannel
+                    array_merge($event->metadata(), [
+                            self::PROJECTION_STATE => $state,
+                            self::PROJECTION_NAME => $projectionConfiguration->getProjectionName(),
+                            self::PROJECTION_IS_POLLING => true
+                        ]
+                    ),
+                    $projectionEventHandler->getRequestChannelName()
                 );
 
                 return $projectionConfiguration->isKeepingStateBetweenEvents() ? $result : null;
@@ -53,5 +73,12 @@ class ProjectionExecutor
 
         $this->lazyProophProjectionManager->ensureEventStoreIsPrepared();
         $projection->run(false);
+    }
+
+    private function shouldBePassedToEventHandler(\Ecotone\Messaging\Message $message)
+    {
+        return $message->getHeaders()->containsKey(ProjectionExecutor::PROJECTION_IS_POLLING)
+            ? $message->getHeaders()->get(ProjectionExecutor::PROJECTION_IS_POLLING)
+            : false;
     }
 }

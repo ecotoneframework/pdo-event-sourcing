@@ -5,7 +5,7 @@ namespace Ecotone\EventSourcing\Config\InboundChannelAdapter;
 
 use Ecotone\EventSourcing\EventSourcingConfiguration;
 use Ecotone\EventSourcing\LazyProophProjectionManager;
-use Ecotone\EventSourcing\ProjectionConfiguration;
+use Ecotone\EventSourcing\ProjectionSetupConfiguration;
 use Ecotone\Messaging\Gateway\MessagingEntrypoint;
 use Ecotone\Messaging\Handler\ChannelResolver;
 use Ecotone\Messaging\Handler\InputOutputMessageHandlerBuilder;
@@ -20,17 +20,19 @@ use Ecotone\Messaging\MessageHandler;
 class ProjectionExecutorBuilder extends InputOutputMessageHandlerBuilder implements MessageHandlerBuilder
 {
     private EventSourcingConfiguration $eventSourcingConfiguration;
-    private ProjectionConfiguration $projectionConfiguration;
+    private ProjectionSetupConfiguration $projectionConfiguration;
+    private string $methodName;
 
-    public function __construct(EventSourcingConfiguration $eventSourcingConfiguration, ProjectionConfiguration $projectionConfiguration)
+    public function __construct(EventSourcingConfiguration $eventSourcingConfiguration, ProjectionSetupConfiguration $projectionConfiguration, string $methodName)
     {
         $this->eventSourcingConfiguration = $eventSourcingConfiguration;
         $this->projectionConfiguration = $projectionConfiguration;
+        $this->methodName = $methodName;
     }
 
     public function getInterceptedInterface(InterfaceToCallRegistry $interfaceToCallRegistry): InterfaceToCall
     {
-        return $interfaceToCallRegistry->getFor(ProjectionExecutor::class, "execute");
+        return $interfaceToCallRegistry->getFor(ProjectionExecutor::class, $this->methodName);
     }
 
     public function build(ChannelResolver $channelResolver, ReferenceSearchService $referenceSearchService): MessageHandler
@@ -40,8 +42,9 @@ class ProjectionExecutorBuilder extends InputOutputMessageHandlerBuilder impleme
                 new LazyProophProjectionManager($this->eventSourcingConfiguration, $referenceSearchService),
                 $this->projectionConfiguration
             ),
-            "execute"
+            $this->methodName
         )
+            ->withOutputMessageChannel($this->getOutputMessageChannelName())
             ->withMethodParameterConverters([ReferenceBuilder::create("messagingEntrypoint", MessagingEntrypoint::class)])
             ->build($channelResolver, $referenceSearchService);
     }
@@ -49,7 +52,7 @@ class ProjectionExecutorBuilder extends InputOutputMessageHandlerBuilder impleme
     public function resolveRelatedInterfaces(InterfaceToCallRegistry $interfaceToCallRegistry): iterable
     {
         return [
-            $interfaceToCallRegistry->getFor(ProjectionExecutor::class, "execute")
+            $interfaceToCallRegistry->getFor(ProjectionExecutor::class, $this->methodName)
         ];
     }
 

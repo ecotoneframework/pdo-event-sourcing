@@ -7,6 +7,7 @@ namespace Ecotone\EventSourcing;
 use DateTimeImmutable;
 use DateTimeZone;
 use Ecotone\Messaging\Handler\TypeDescriptor;
+use Ecotone\Modelling\Event;
 use Prooph\Common\Messaging\Message;
 use Prooph\Common\Messaging\MessageFactory;
 use Ramsey\Uuid\Uuid;

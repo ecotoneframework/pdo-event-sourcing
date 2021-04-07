@@ -12,6 +12,7 @@ use Ecotone\Messaging\Conversion\InMemoryConversionService;
 use Ecotone\Messaging\Conversion\MediaType;
 use Ecotone\Messaging\Handler\TypeDescriptor;
 use Ecotone\Messaging\MessageHeaders;
+use Ecotone\Modelling\Event;
 use Iterator;
 use Prooph\EventStore\EventStore as ProophEventStore;
 use Prooph\EventStore\Metadata\MetadataMatcher;

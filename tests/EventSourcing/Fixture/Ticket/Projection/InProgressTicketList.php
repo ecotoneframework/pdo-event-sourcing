@@ -14,7 +14,7 @@ use Test\Ecotone\EventSourcing\Fixture\Ticket\Event\TicketWasClosed;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Event\TicketWasRegistered;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Ticket;
 
-#[Projection(self::IN_PROGRESS_TICKET_PROJECTION, Ticket::class, options: ["lock_timeout_ms" => 0])]
+#[Projection(self::IN_PROGRESS_TICKET_PROJECTION, Ticket::class, options: ["lock_timeout_ms" => 0, "update_lock_threshold" => 0])]
 class InProgressTicketList
 {
     const IN_PROGRESS_TICKET_PROJECTION = "inProgressTicketList";
@@ -34,9 +34,9 @@ SQL)->fetchAllAssociative();
     }
 
     #[EventHandler]
-    public function addTicket(TicketWasRegistered $event, array $metadata) : void
+    public function addTicket(TicketWasRegistered $event) : void
     {
-        $result = $this->connection->executeStatement(<<<SQL
+        $this->connection->executeStatement(<<<SQL
     INSERT INTO in_progress_tickets VALUES (?,?)
 SQL, [$event->getTicketId(), $event->getTicketType()]);
     }

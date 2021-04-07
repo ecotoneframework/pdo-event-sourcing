@@ -13,6 +13,7 @@ use Ecotone\Messaging\Handler\ClassDefinition;
 use Ecotone\Messaging\Handler\TypeDescriptor;
 use Ecotone\Messaging\MessageConverter\HeaderMapper;
 use Ecotone\Messaging\MessageHeaders;
+use Ecotone\Modelling\Event;
 use Ecotone\Modelling\EventSourcedRepository;
 use Ecotone\Modelling\EventStream;
 use Prooph\EventStore\EventStore;

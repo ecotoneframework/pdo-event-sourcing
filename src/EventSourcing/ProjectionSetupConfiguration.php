@@ -10,13 +10,14 @@ use Prooph\EventStore\Pdo\Projection\PdoEventStoreReadModelProjector;
 use Prooph\EventStore\Projection\ReadModel;
 use Prooph\EventStore\Projection\ReadModelProjector;
 
-class ProjectionConfiguration
+class ProjectionSetupConfiguration
 {
     private string $projectionName;
     private ProjectionLifeCycleConfiguration $projectionLifeCycleConfiguration;
     private bool $withAllStreams;
     private array $streamNames;
     private array $categories;
+    /** @var ProjectionEventHandlerConfiguration[] */
     private array $projectionEventHandlers = [];
     /** @var array http://docs.getprooph.org/event-store/projections.html#Options https://github.com/prooph/pdo-event-store/pull/221/files */
     private array $projectionOptions;
@@ -31,7 +32,9 @@ class ProjectionConfiguration
         $this->projectionLifeCycleConfiguration = $projectionLifeCycleConfiguration;
 
         $this->projectionOptions = [
-            PdoEventStoreReadModelProjector::OPTION_GAP_DETECTION => new GapDetection()
+            PdoEventStoreReadModelProjector::OPTION_GAP_DETECTION => new GapDetection(),
+//            PdoEventStoreReadModelProjector::DEFAULT_LOCK_TIMEOUT_MS => 0,
+//            PdoEventStoreReadModelProjector::OPTION_UPDATE_LOCK_THRESHOLD => 0
         ];
     }
 
@@ -72,11 +75,11 @@ class ProjectionConfiguration
         return $this->keepStateBetweenEvents;
     }
 
-    public function withProjectionEventHandler(string $eventName, string $eventHandlerRequestChannel) : static
+    public function withProjectionEventHandler(string $eventName, string $className, string $methodName, string $eventHandlerRequestChannel) : static
     {
         Assert::keyNotExists($this->projectionEventHandlers, $eventName, "Projection {$this->projectionName} has incorrect configuration. Can't register event handler twice for the same event {$eventName}");
 
-        $this->projectionEventHandlers[$eventName] = $eventHandlerRequestChannel;
+        $this->projectionEventHandlers[$eventName] = new ProjectionEventHandlerConfiguration($className, $methodName, $eventHandlerRequestChannel);
 
         return $this;
     }
@@ -113,7 +116,7 @@ class ProjectionConfiguration
         return $this->projectionLifeCycleConfiguration;
     }
 
-    public function getProjectionEventHandlerChannels(): array
+    public function getProjectionEventHandlers(): array
     {
         return $this->projectionEventHandlers;
     }

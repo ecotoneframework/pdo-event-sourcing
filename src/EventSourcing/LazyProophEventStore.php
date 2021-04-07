@@ -177,6 +177,7 @@ class LazyProophEventStore implements EventStore
         $writeLockStrategy = new NoLockStrategy();
         $connection = $this->getWrappedConnection();
         if ($this->eventSourcingConfiguration->isWriteLockStrategyEnabled()) {
+            die("test");
             $writeLockStrategy = match ($eventStoreType) {
                 self::EVENT_STORE_TYPE_MYSQL => new MysqlMetadataLockStrategy($connection),
                 self::EVENT_STORE_TYPE_MARIADB => new MariaDbMetadataLockStrategy($connection),

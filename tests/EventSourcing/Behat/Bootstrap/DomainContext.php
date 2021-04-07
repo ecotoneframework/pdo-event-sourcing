@@ -82,7 +82,9 @@ class DomainContext extends TestCase implements Context
      */
     public function rollBack(): void
     {
-        self::$connection->rollBack();
+        if (self::$connection->isTransactionActive()) {
+            self::$connection->rollBack();
+        }
     }
 
     private function getCommandBus(): CommandBus

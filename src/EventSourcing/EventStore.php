@@ -3,6 +3,7 @@
 
 namespace Ecotone\EventSourcing;
 
+use Ecotone\Modelling\Event;
 use Prooph\EventStore\Metadata\MetadataMatcher;
 
 interface EventStore
