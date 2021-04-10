@@ -8,12 +8,14 @@ use Ecotone\EventSourcing\Attribute\Projection;
 use Ecotone\EventSourcing\Attribute\ProjectionDelete;
 use Ecotone\EventSourcing\Attribute\ProjectionInitialization;
 use Ecotone\EventSourcing\Attribute\ProjectionReset;
+use Ecotone\Messaging\Attribute\Asynchronous;
 use Ecotone\Modelling\Attribute\EventHandler;
 use Ecotone\Modelling\Attribute\QueryHandler;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Event\TicketWasClosed;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Event\TicketWasRegistered;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Ticket;
 
+#[Asynchronous("asynchronous_projections")]
 #[Projection(self::IN_PROGRESS_TICKET_PROJECTION, Ticket::class, options: ["lock_timeout_ms" => 0, "update_lock_threshold" => 0])]
 class InProgressTicketList
 {
@@ -33,7 +35,7 @@ class InProgressTicketList
 SQL)->fetchAllAssociative();
     }
 
-    #[EventHandler]
+    #[EventHandler(endpointId: "inProgressTicketList.addTicket")]
     public function addTicket(TicketWasRegistered $event) : void
     {
         $this->connection->executeStatement(<<<SQL
@@ -41,7 +43,7 @@ SQL)->fetchAllAssociative();
 SQL, [$event->getTicketId(), $event->getTicketType()]);
     }
 
-    #[EventHandler]
+    #[EventHandler(endpointId: "inProgressTicketList.closeTicket")]
     public function closeTicket(TicketWasClosed $event) : void
     {
         $this->connection->executeStatement(<<<SQL

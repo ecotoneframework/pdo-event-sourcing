@@ -18,18 +18,4 @@ class MessagingConfiguration
                 ->withTransactionOnAsynchronousEndpoints(false)
                 ->withTransactionOnConsoleCommands(false);
     }
-
-    #[ServiceContext]
-    public function setMaximumOneRunForProjections()
-    {
-        return PollingMetadata::create(InProgressTicketList::IN_PROGRESS_TICKET_PROJECTION)
-                    ->setExecutionAmountLimit(3)
-                    ->setExecutionTimeLimitInMilliseconds(300);
-    }
-
-    #[ServiceContext]
-    public function enablePollingProjection()
-    {
-        return ProjectionRunningConfiguration::createPolling(InProgressTicketList::IN_PROGRESS_TICKET_PROJECTION);
-    }
 }

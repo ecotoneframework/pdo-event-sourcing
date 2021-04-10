@@ -24,6 +24,7 @@ use Ecotone\EventSourcing\ProjectionManager;
 use Ecotone\EventSourcing\EventSourcingRepositoryBuilder;
 use Ecotone\Messaging\Attribute\ModuleAnnotation;
 use Ecotone\Messaging\Config\Annotation\AnnotatedDefinitionReference;
+use Ecotone\Messaging\Config\Annotation\ModuleConfiguration\AsynchronousModule;
 use Ecotone\Messaging\Config\Annotation\ModuleConfiguration\NoExternalConfigurationModule;
 use Ecotone\Messaging\Config\BeforeSend\BeforeSendChannelInterceptorBuilder;
 use Ecotone\Messaging\Config\Configuration;
@@ -195,7 +196,7 @@ class EventSourcingModule extends NoExternalConfigurationModule
                 ModellingHandlerModule::getNamedMessageChannelForEventHandler($projectionEventHandler),
                 $projectionEventHandler->getClassName(),
                 $projectionEventHandler->getMethodName(),
-                ModellingHandlerModule::getHandlerChannel($projectionEventHandler)
+                AsynchronousModule::create($annotationRegistrationService)->getSynchronousChannelFor(ModellingHandlerModule::getHandlerChannel($projectionEventHandler))
             );
         }
 
@@ -224,7 +225,6 @@ class EventSourcingModule extends NoExternalConfigurationModule
         }
 
         foreach ($eventSourcingConfigurations as $eventSourcingConfiguration) {
-            $lazyProophProjectionManager = null;
             foreach ($this->projectionSetupConfigurations as $projectionSetupConfiguration) {
                 $generatedChannelName  = Uuid::uuid4()->toString();
                 $projectionExecutorBuilder = new ProjectionExecutorBuilder($eventSourcingConfiguration, $projectionSetupConfiguration, "execute");

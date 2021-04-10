@@ -6,8 +6,8 @@ use Ecotone\Messaging\Support\Assert;
 
 class ProjectionRunningConfiguration
 {
-    private const EVENT_DRIVEN = "synchronous";
-    private const POLLING      = "continuesPolling";
+    private const EVENT_DRIVEN = "event-driven";
+    private const POLLING      = "polling";
 
     private function __construct(private string $projectionName, private string $runningType, private bool $initializeOnStartup) {}
 

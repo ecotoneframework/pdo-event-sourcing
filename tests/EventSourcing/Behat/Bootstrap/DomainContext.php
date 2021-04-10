@@ -31,50 +31,22 @@ use Test\Ecotone\EventSourcing\Fixture\Ticket\TicketEventConverter;
 class DomainContext extends TestCase implements Context
 {
     private static ConfiguredMessagingSystem $messagingSystem;
-    private static Connection $connection;
+    private static ?Connection $connection = null;
 
     /**
      * @Given I active messaging for namespace :namespace
      */
     public function iActiveMessagingForNamespace(string $namespace)
     {
-        $managerRegistryConnectionFactory = new DbalConnectionFactory(["dsn" => 'pgsql://ecotone:secret@database:5432/ecotone']);
-        self::$connection = $managerRegistryConnectionFactory->createContext()->getDbalConnection();
+        $this->prepareMessaging([$namespace]);
+    }
 
-        switch ($namespace) {
-            case "Test\Ecotone\EventSourcing\Fixture\Ticket":
-            {
-                $objects = [new TicketEventConverter(), new InProgressTicketList(self::$connection)];
-                break;
-            }
-            case "Test\Ecotone\EventSourcing\Fixture\Basket": {
-                $objects = [new BasketEventConverter(), new BasketList()];
-                break;
-            }
-            default:
-            {
-                throw new InvalidArgumentException("Namespace {$namespace} not yet implemented");
-            }
-        }
-
-        self::$messagingSystem = EcotoneLiteConfiguration::createWithConfiguration(
-            __DIR__ . "/../../../../",
-            InMemoryPSRContainer::createFromObjects(array_merge(
-                $objects,
-                [
-                    "managerRegistry" => $managerRegistryConnectionFactory,
-                    DbalConnectionFactory::class => $managerRegistryConnectionFactory
-                ])
-            ),
-            ServiceConfiguration::createWithDefaults()
-                ->withEnvironment("prod")
-                ->withNamespaces([$namespace])
-                ->withCacheDirectoryPath(sys_get_temp_dir() . DIRECTORY_SEPARATOR . Uuid::uuid4()->toString()),
-            [],
-            false
-        );
-
-        self::$connection->beginTransaction();
+    /**
+     * @Given I active messaging for namespaces
+     */
+    public function iActiveMessagingForNamespaces(TableNode $table)
+    {
+        $this->prepareMessaging($table->getColumn(0));
     }
 
     /**
@@ -82,7 +54,7 @@ class DomainContext extends TestCase implements Context
      */
     public function rollBack(): void
     {
-        if (self::$connection->isTransactionActive()) {
+        if (self::$connection && self::$connection->isTransactionActive()) {
             self::$connection->rollBack();
         }
     }
@@ -107,7 +79,6 @@ class DomainContext extends TestCase implements Context
             $assignedPerson,
             $ticketType
         ));
-        self::$messagingSystem->run(InProgressTicketList::IN_PROGRESS_TICKET_PROJECTION);
     }
 
     /**
@@ -127,7 +98,6 @@ class DomainContext extends TestCase implements Context
     public function iCloseTicketWithId(string $ticketId)
     {
         $this->getCommandBus()->send(new CloseTicket($ticketId));
-        self::$messagingSystem->run(InProgressTicketList::IN_PROGRESS_TICKET_PROJECTION);
     }
 
     /**
@@ -203,5 +173,62 @@ class DomainContext extends TestCase implements Context
     {
         $this->getCommandBus()->send(new AddProduct($basketId, $name));
         self::$messagingSystem->run(BasketList::PROJECTION_NAME);
+    }
+
+    private function prepareMessaging(array $namespaces): void
+    {
+        $managerRegistryConnectionFactory = new DbalConnectionFactory(["dsn" => 'pgsql://ecotone:secret@database:5432/ecotone']);
+        self::$connection                 = $managerRegistryConnectionFactory->createContext()->getDbalConnection();
+
+        $objects = [];
+        foreach ($namespaces as $namespace) {
+            switch ($namespace) {
+                case "Test\Ecotone\EventSourcing\Fixture\Ticket":
+                {
+                    $objects = array_merge($objects, [new TicketEventConverter(), new InProgressTicketList(self::$connection)]);
+                    break;
+                }
+                case "Test\Ecotone\EventSourcing\Fixture\Basket":
+                {
+                    $objects = array_merge($objects, [new BasketEventConverter(), new BasketList()]);
+                    break;
+                }
+                case "Test\Ecotone\EventSourcing\Fixture\TicketWithPollingProjection": {break;}
+                case "Test\Ecotone\EventSourcing\Fixture\TicketWithAsynchronousEventDrivenProjection": {break;}
+                default:
+                {
+                    throw new InvalidArgumentException("Namespace {$namespace} not yet implemented");
+                }
+            }
+        }
+
+        self::$messagingSystem = EcotoneLiteConfiguration::createWithConfiguration(
+            __DIR__ . "/../../../../",
+            InMemoryPSRContainer::createFromObjects(
+                array_merge(
+                    $objects,
+                    [
+                        "managerRegistry" => $managerRegistryConnectionFactory,
+                        DbalConnectionFactory::class => $managerRegistryConnectionFactory
+                    ]
+                )
+            ),
+            ServiceConfiguration::createWithDefaults()
+                ->withEnvironment("prod")
+                ->withNamespaces($namespaces)
+                ->withCacheDirectoryPath(sys_get_temp_dir() . DIRECTORY_SEPARATOR . Uuid::uuid4()->toString()),
+            [],
+            false
+        );
+
+        self::$connection->beginTransaction();
+    }
+
+    /**
+     * @When I run endpoint with name :name
+     */
+    public function iRunEndpointWithName($name)
+    {
+        self::$messagingSystem->run($name);
     }
 }

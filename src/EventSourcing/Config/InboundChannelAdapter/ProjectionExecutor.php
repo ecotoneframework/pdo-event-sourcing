@@ -6,6 +6,7 @@ namespace Ecotone\EventSourcing\Config\InboundChannelAdapter;
 
 use Ecotone\EventSourcing\LazyProophProjectionManager;
 use Ecotone\EventSourcing\ProjectionSetupConfiguration;
+use Ecotone\Messaging\Config\MessagingSystemConfiguration;
 use Ecotone\Messaging\Gateway\MessagingEntrypoint;
 use Prooph\Common\Messaging\Message;
 
@@ -17,6 +18,7 @@ class ProjectionExecutor
 
     private LazyProophProjectionManager $lazyProophProjectionManager;
     private ProjectionSetupConfiguration $projectionConfiguration;
+    private bool $wasInitialized = false;
 
     public function __construct(LazyProophProjectionManager $lazyProophProjectionManager, ProjectionSetupConfiguration $projectionConfiguration)
     {
@@ -37,8 +39,9 @@ class ProjectionExecutor
 
     public function execute(MessagingEntrypoint $messagingEntrypoint) : void
     {
-        if ($this->projectionConfiguration->getProjectionLifeCycleConfiguration()->getInitializationRequestChannel()) {
+        if (!$this->wasInitialized && $this->projectionConfiguration->getProjectionLifeCycleConfiguration()->getInitializationRequestChannel()) {
             $messagingEntrypoint->send([], $this->projectionConfiguration->getProjectionLifeCycleConfiguration()->getInitializationRequestChannel());
+            $this->wasInitialized = true;
         }
 
         $handlers = [];
