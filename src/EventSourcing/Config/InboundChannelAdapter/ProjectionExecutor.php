@@ -71,9 +71,7 @@ class ProjectionExecutor
         $readModel = new ProophReadModel(
             $messagingEntrypoint,
             $this->projectionConfiguration->getProjectionLifeCycleConfiguration(),
-            $this->projectionRunningConfiguration->isEventDriven() && $projectionEventHandlers
-                    ? (reset($projectionEventHandlers))->getTriggeringChannelName()
-                    : NullableMessageChannel::CHANNEL_NAME
+            $this->projectionRunningConfiguration
         );
         $projection = $this->lazyProophProjectionManager->createReadModelProjection($this->projectionConfiguration->getProjectionName(), $readModel, $this->projectionConfiguration->getProjectionOptions());
         if  ($this->projectionConfiguration->isWithAllStreams()) {
@@ -86,6 +84,10 @@ class ProjectionExecutor
         $projection = $projection->when($handlers);
 
         $this->lazyProophProjectionManager->ensureEventStoreIsPrepared();
+
+        if ($this->projectionRunningConfiguration->isTestingSetup()) {
+            usleep(10);
+        }
         $projection->run(false);
     }
 

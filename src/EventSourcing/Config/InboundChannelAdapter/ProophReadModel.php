@@ -14,12 +14,16 @@ class ProophReadModel implements ReadModel
     public function __construct(
         private MessagingEntrypoint $messagingEntrypoint,
         private ProjectionLifeCycleConfiguration $projectionLifeCycleConfiguration,
-        private string $triggeringChannelName
+        private ProjectionRunningConfiguration $projectionRunningConfiguration
     ) {}
 
     public function init(): void
     {
         if (!$this->projectionLifeCycleConfiguration->getInitializationRequestChannel()) {
+            return;
+        }
+
+        if (!$this->projectionRunningConfiguration->isInitializedOnStartup()) {
             return;
         }
 

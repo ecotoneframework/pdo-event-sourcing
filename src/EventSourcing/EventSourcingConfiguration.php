@@ -8,7 +8,7 @@ use Enqueue\Dbal\DbalConnectionFactory;
 
 class EventSourcingConfiguration
 {
-    private bool $initializeOnStart = LazyProophEventStore::INITIALIZE_ON_STARTUP;
+    private bool $initializeEventStoreOnStart = LazyProophEventStore::INITIALIZE_ON_STARTUP;
     private int $loadBatchSize = LazyProophEventStore::LOAD_BATCH_SIZE;
     private bool $enableWriteLockStrategy = LazyProophEventStore::DEFAULT_ENABLE_WRITE_LOCK_STRATEGY;
     private string $eventStreamTableName = LazyProophEventStore::DEFAULT_STREAM_TABLE;
@@ -46,9 +46,9 @@ class EventSourcingConfiguration
         return $this;
     }
 
-    public function withInitializeOnStart(bool $isInitializedOnStartup) : static
+    public function withInitializeEventStoreOnStart(bool $isInitializedOnStartup) : static
     {
-        $this->initializeOnStart = $isInitializedOnStartup;
+        $this->initializeEventStoreOnStart = $isInitializedOnStartup;
 
         return $this;
     }
@@ -83,7 +83,7 @@ class EventSourcingConfiguration
 
     public function isInitializedOnStart(): bool
     {
-        return $this->initializeOnStart;
+        return $this->initializeEventStoreOnStart;
     }
 
     public function isUsingSingleStreamStrategy() : bool

@@ -50,6 +50,7 @@ use Ecotone\Modelling\Attribute\EventSourcedAggregate;
 use Ecotone\Modelling\Config\ModellingHandlerModule;
 use Laminas\Service;
 use Prooph\EventStore\Projection\ReadModel;
+use Prooph\EventStore\Projection\ReadModelProjector;
 use Ramsey\Uuid\Uuid;
 
 #[ModuleAnnotation]
@@ -188,8 +189,7 @@ class EventSourcingModule extends NoExternalConfigurationModule
                 );
             }
 
-            $projectionSetupConfigurations[$projectionAttribute->getName()] = $projectionConfiguration
-                ->withOptions($projectionAttribute->getOptions());
+            $projectionSetupConfigurations[$projectionAttribute->getName()] = $projectionConfiguration;
         }
 
         foreach ($projectionEventHandlers as $projectionEventHandler) {
@@ -232,7 +232,7 @@ class EventSourcingModule extends NoExternalConfigurationModule
         }
 
         foreach ($eventSourcingConfigurations as $eventSourcingConfiguration) {
-            foreach ($this->projectionSetupConfigurations as $projectionSetupConfiguration) {
+            foreach ($this->projectionSetupConfigurations as $index => $projectionSetupConfiguration) {
                 if ($eventSourcingConfiguration->getEventStoreReferenceName() === $projectionSetupConfiguration->getEventStoreReferenceName())
 
                 $generatedChannelName  = Uuid::uuid4()->toString();
@@ -240,6 +240,14 @@ class EventSourcingModule extends NoExternalConfigurationModule
                 if (array_key_exists($projectionSetupConfiguration->getProjectionName(), $projectionRunningConfigurations)) {
                     $projectionRunningConfiguration = $projectionRunningConfigurations[$projectionSetupConfiguration->getProjectionName()];
                 }
+                $projectionSetupConfiguration = $projectionSetupConfiguration
+                                        ->withOptions([
+                                            ReadModelProjector::OPTION_CACHE_SIZE => $projectionRunningConfiguration->getAmountOfCachedStreamNames(),
+                                            ReadModelProjector::OPTION_SLEEP => $projectionRunningConfiguration->getWaitBeforeCallingESWhenNoEventsFound(),
+                                            ReadModelProjector::OPTION_PERSIST_BLOCK_SIZE => $projectionRunningConfiguration->getPersistChangesAfterAmountOfOperations(),
+                                            ReadModelProjector::OPTION_LOCK_TIMEOUT_MS => $projectionRunningConfiguration->getProjectionLockTimeout(),
+                                            ReadModelProjector::DEFAULT_UPDATE_LOCK_THRESHOLD => $projectionRunningConfiguration->getUpdateLockTimeoutAfter()
+                                        ]);
 
                 $projectionExecutorBuilder = new ProjectionExecutorBuilder($eventSourcingConfiguration, $projectionSetupConfiguration, $this->projectionSetupConfigurations, $projectionRunningConfiguration, "execute");
                 $projectionExecutorBuilder = $projectionExecutorBuilder->withInputChannelName($generatedChannelName);

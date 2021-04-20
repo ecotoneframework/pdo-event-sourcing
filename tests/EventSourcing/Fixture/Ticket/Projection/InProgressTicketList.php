@@ -16,7 +16,7 @@ use Test\Ecotone\EventSourcing\Fixture\Ticket\Event\TicketWasRegistered;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Ticket;
 
 #[Asynchronous("asynchronous_projections")]
-#[Projection(self::IN_PROGRESS_TICKET_PROJECTION, Ticket::class, options: ["lock_timeout_ms" => 0, "update_lock_threshold" => 0])]
+#[Projection(self::IN_PROGRESS_TICKET_PROJECTION, Ticket::class)]
 class InProgressTicketList
 {
     const IN_PROGRESS_TICKET_PROJECTION = "inProgressTicketList";

@@ -84,6 +84,10 @@ class LazyProophProjectionManager implements ProjectionManager
     public function stopProjection(string $name): void
     {
         $this->getProjectionManager()->stopProjection($name);
+
+        /** @var MessagingEntrypoint $messagingEntrypoint */
+        $messagingEntrypoint = $this->referenceSearchService->get(MessagingEntrypoint::class);
+        $messagingEntrypoint->send([], $this->projectionSetupConfigurations[$name]->getTriggeringChannelName());
     }
 
     public function fetchProjectionNames(?string $filter, int $limit = 20, int $offset = 0): array

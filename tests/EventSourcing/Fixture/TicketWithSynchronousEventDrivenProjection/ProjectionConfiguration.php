@@ -1,6 +1,6 @@
 <?php
 
-namespace Test\Ecotone\EventSourcing\Fixture\TicketWithAsynchronousEventDrivenProjection;
+namespace Test\Ecotone\EventSourcing\Fixture\TicketWithSynchronousEventDrivenProjection;
 
 use Ecotone\Dbal\DbalBackedMessageChannelBuilder;
 use Ecotone\EventSourcing\ProjectionRunningConfiguration;
@@ -11,20 +11,6 @@ use Test\Ecotone\EventSourcing\Fixture\Ticket\Projection\InProgressTicketList;
 
 class ProjectionConfiguration
 {
-    #[ServiceContext]
-    public function setMaximumLimitedTimeForProjections()
-    {
-        return PollingMetadata::create("asynchronous_projections")
-            ->setExecutionAmountLimit(3)
-            ->setExecutionTimeLimitInMilliseconds(300);
-    }
-
-    #[ServiceContext]
-    public function enableAsynchronousProjection()
-    {
-        return SimpleMessageChannelBuilder::createQueueChannel("asynchronous_projections");
-    }
-
     #[ServiceContext]
     public function configureProjection()
     {

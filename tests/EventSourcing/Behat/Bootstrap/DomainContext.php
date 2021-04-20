@@ -193,6 +193,7 @@ class DomainContext extends TestCase implements Context
                 }
                 case "Test\Ecotone\EventSourcing\Fixture\TicketWithPollingProjection": {break;}
                 case "Test\Ecotone\EventSourcing\Fixture\TicketWithAsynchronousEventDrivenProjection": {break;}
+                case "Test\Ecotone\EventSourcing\Fixture\TicketWithSynchronousEventDrivenProjection": {break;}
                 default:
                 {
                     throw new InvalidArgumentException("Namespace {$namespace} not yet implemented");
