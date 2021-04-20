@@ -32,6 +32,7 @@ class InProgressTicketList
     {
         return $this->connection->executeQuery(<<<SQL
     SELECT * FROM in_progress_tickets
+    ORDER BY ticket_id ASC
 SQL)->fetchAllAssociative();
     }
 

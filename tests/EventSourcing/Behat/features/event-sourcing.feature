@@ -52,6 +52,7 @@ Feature: activating as aggregate order entity
     When I register "alert" ticket 1234 with assignation to "Marcus"
     And I run endpoint with name "inProgressTicketList"
     And I stop the projection for in progress tickets
+    And I run endpoint with name "inProgressTicketList"
     And I register "alert" ticket 12345 with assignation to "Andrew"
     Then I should see tickets in progress:
       | ticket_id  | ticket_type    |
@@ -81,6 +82,28 @@ Feature: activating as aggregate order entity
       | 1234       | alert          |
       | 12345      | alert          |
     And I delete projection for all in progress tickets
+    Then there should be no in progress ticket list
+
+  Scenario: Operations on asynchronous event-driven projection
+    Given I active messaging for namespaces
+      | Test\Ecotone\EventSourcing\Fixture\Ticket                      |
+      | Test\Ecotone\EventSourcing\Fixture\TicketWithAsynchronousEventDrivenProjection |
+    When I register "alert" ticket 1234 with assignation to "Marcus"
+    And I run endpoint with name "asynchronous_projections"
+    And I stop the projection for in progress tickets
+    And I register "alert" ticket 12345 with assignation to "Andrew"
+    And I run endpoint with name "asynchronous_projections"
+    Then I should see tickets in progress:
+      | ticket_id  | ticket_type    |
+      | 1234       | alert          |
+    When I reset the projection for in progress tickets
+    And I run endpoint with name "asynchronous_projections"
+    Then I should see tickets in progress:
+      | ticket_id  | ticket_type    |
+      | 1234       | alert          |
+      | 12345      | alert          |
+    And I delete projection for all in progress tickets
+    And I run endpoint with name "asynchronous_projections"
     Then there should be no in progress ticket list
 
   Scenario: I verify building projection from event sourced aggregate using custom stream name and simple arrays in projections
