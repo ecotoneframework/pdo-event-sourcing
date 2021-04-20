@@ -6,7 +6,7 @@ namespace Ecotone\EventSourcing;
 
 class ProjectionEventHandlerConfiguration
 {
-    public function __construct(private string $className, private string $methodName, private string $requestChannelName) {}
+    public function __construct(private string $className, private string $methodName, private string $synchronousRequestChannelName, private string $asynchronousRequestChannelName) {}
 
     public function getClassName(): string
     {
@@ -18,8 +18,13 @@ class ProjectionEventHandlerConfiguration
         return $this->methodName;
     }
 
-    public function getRequestChannelName(): string
+    public function getSynchronousRequestChannelName(): string
     {
-        return $this->requestChannelName;
+        return $this->synchronousRequestChannelName;
+    }
+
+    public function getTriggeringChannelName(): string
+    {
+        return $this->asynchronousRequestChannelName;
     }
 }

@@ -5,9 +5,11 @@ namespace Ecotone\EventSourcing\Config\InboundChannelAdapter;
 
 
 use Ecotone\EventSourcing\LazyProophProjectionManager;
+use Ecotone\EventSourcing\ProjectionRunningConfiguration;
 use Ecotone\EventSourcing\ProjectionSetupConfiguration;
 use Ecotone\Messaging\Config\MessagingSystemConfiguration;
 use Ecotone\Messaging\Gateway\MessagingEntrypoint;
+use Ecotone\Messaging\NullableMessageChannel;
 use Prooph\Common\Messaging\Message;
 
 class ProjectionExecutor
@@ -19,11 +21,13 @@ class ProjectionExecutor
     private LazyProophProjectionManager $lazyProophProjectionManager;
     private ProjectionSetupConfiguration $projectionConfiguration;
     private bool $wasInitialized = false;
+    private ProjectionRunningConfiguration $projectionRunningConfiguration;
 
-    public function __construct(LazyProophProjectionManager $lazyProophProjectionManager, ProjectionSetupConfiguration $projectionConfiguration)
+    public function __construct(LazyProophProjectionManager $lazyProophProjectionManager, ProjectionSetupConfiguration $projectionConfiguration, ProjectionRunningConfiguration $projectionRunningConfiguration)
     {
         $this->lazyProophProjectionManager = $lazyProophProjectionManager;
         $this->projectionConfiguration = $projectionConfiguration;
+        $this->projectionRunningConfiguration = $projectionRunningConfiguration;
     }
 
     public function beforeEventHandler(\Ecotone\Messaging\Message $message, MessagingEntrypoint $messagingEntrypoint) : ?\Ecotone\Messaging\Message
@@ -45,7 +49,8 @@ class ProjectionExecutor
         }
 
         $handlers = [];
-        foreach ($this->projectionConfiguration->getProjectionEventHandlers() as $eventName => $projectionEventHandler) {
+        $projectionEventHandlers    = $this->projectionConfiguration->getProjectionEventHandlers();
+        foreach ($projectionEventHandlers as $eventName => $projectionEventHandler) {
             $projectionConfiguration = $this->projectionConfiguration;
             $handlers[$eventName] = function ($state, Message $event) use ($messagingEntrypoint, $projectionEventHandler, $projectionConfiguration) : mixed {
                 $result = $messagingEntrypoint->sendWithHeaders(
@@ -56,14 +61,20 @@ class ProjectionExecutor
                             self::PROJECTION_IS_POLLING => true
                         ]
                     ),
-                    $projectionEventHandler->getRequestChannelName()
+                    $projectionEventHandler->getSynchronousRequestChannelName()
                 );
 
                 return $projectionConfiguration->isKeepingStateBetweenEvents() ? $result : null;
             };
         }
 
-        $readModel = new ProophReadModel($messagingEntrypoint, $this->projectionConfiguration->getProjectionLifeCycleConfiguration()->getInitializationRequestChannel(), $this->projectionConfiguration->getProjectionLifeCycleConfiguration()->getResetRequestChannel(), $this->projectionConfiguration->getProjectionLifeCycleConfiguration()->getDeleteRequestChannel());
+        $readModel = new ProophReadModel(
+            $messagingEntrypoint,
+            $this->projectionConfiguration->getProjectionLifeCycleConfiguration(),
+            $this->projectionRunningConfiguration->isEventDriven() && $projectionEventHandlers
+                    ? (reset($projectionEventHandlers))->getTriggeringChannelName()
+                    : NullableMessageChannel::CHANNEL_NAME
+        );
         $projection = $this->lazyProophProjectionManager->createReadModelProjection($this->projectionConfiguration->getProjectionName(), $readModel, $this->projectionConfiguration->getProjectionOptions());
         if  ($this->projectionConfiguration->isWithAllStreams()) {
             $projection = $projection->fromAll();

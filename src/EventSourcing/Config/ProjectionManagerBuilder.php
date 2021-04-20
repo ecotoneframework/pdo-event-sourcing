@@ -6,6 +6,8 @@ namespace Ecotone\EventSourcing\Config;
 
 use Ecotone\EventSourcing\EventSourcingConfiguration;
 use Ecotone\EventSourcing\LazyProophProjectionManager;
+use Ecotone\EventSourcing\ProjectionRunningConfiguration;
+use Ecotone\EventSourcing\ProjectionSetupConfiguration;
 use Ecotone\Messaging\Handler\ChannelResolver;
 use Ecotone\Messaging\Handler\InputOutputMessageHandlerBuilder;
 use Ecotone\Messaging\Handler\InterfaceToCall;
@@ -17,23 +19,29 @@ use Ecotone\Messaging\MessageHandler;
 
 class ProjectionManagerBuilder extends InputOutputMessageHandlerBuilder
 {
-    private string $methodName;
-    private EventSourcingConfiguration $eventSourcingConfiguration;
-    private array $parameterConverters;
-
-    private function __construct(string $methodName, array $parameterConverters, EventSourcingConfiguration $eventSourcingConfiguration)
-    {
-        $this->methodName = $methodName;
-        $this->parameterConverters = $parameterConverters;
-        $this->eventSourcingConfiguration = $eventSourcingConfiguration;
-    }
+    /**
+     * @param ParameterConverterBuilder[] $parameterConverters
+     * @param ProjectionSetupConfiguration[] $projectionSetupConfigurations
+     */
+    private function __construct(
+        private string $methodName,
+        private array $parameterConverters,
+        private EventSourcingConfiguration $eventSourcingConfiguration,
+        private array $projectionSetupConfigurations
+    )
+    {}
 
     /**
      * @param ParameterConverterBuilder[] $parameterConverters
+     * @param ProjectionSetupConfiguration[] $projectionSetupConfigurations
      */
-    public static function create(string $methodName, array $parameterConverters, EventSourcingConfiguration $eventSourcingConfiguration) : static
+    public static function create(
+        string $methodName, array $parameterConverters,
+        EventSourcingConfiguration $eventSourcingConfiguration,
+        array $projectionSetupConfigurations
+    ) : static
     {
-        return new self($methodName, $parameterConverters, $eventSourcingConfiguration);
+        return new self($methodName, $parameterConverters, $eventSourcingConfiguration, $projectionSetupConfigurations);
     }
 
     public function getInputMessageChannelName() : string
@@ -49,7 +57,7 @@ class ProjectionManagerBuilder extends InputOutputMessageHandlerBuilder
     public function build(ChannelResolver $channelResolver, ReferenceSearchService $referenceSearchService): MessageHandler
     {
         return ServiceActivatorBuilder::createWithDirectReference(
-            new LazyProophProjectionManager($this->eventSourcingConfiguration, $referenceSearchService),
+            new LazyProophProjectionManager($this->eventSourcingConfiguration, $this->projectionSetupConfigurations, $referenceSearchService),
             $this->methodName
         )
             ->withMethodParameterConverters($this->parameterConverters)

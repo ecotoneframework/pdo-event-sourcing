@@ -16,9 +16,8 @@ class Projection
     private array|string $fromCategories;
     private bool $fromAll;
     private string $eventStoreReferenceName;
-    private string $projectionConnectionReferenceName;
 
-    public function __construct(string $name, string|array $fromStreams = [], string|array $fromCategories = [], bool $fromAll = false, array $options = [], string $eventStoreReferenceName = EventStore::class, string $projectionConnectionReferenceName = DbalConnectionFactory::class)
+    public function __construct(string $name, string|array $fromStreams = [], string|array $fromCategories = [], bool $fromAll = false, array $options = [], string $eventStoreReferenceName = EventStore::class)
     {
         $fromStreams = is_string($fromStreams) ? [$fromStreams] : $fromStreams;
         $fromCategories = is_string($fromCategories) ? [$fromCategories] : $fromCategories;
@@ -32,17 +31,11 @@ class Projection
         $this->fromCategories = $fromCategories;
         $this->fromAll = $fromAll;
         $this->eventStoreReferenceName = $eventStoreReferenceName;
-        $this->projectionConnectionReferenceName = $projectionConnectionReferenceName;
     }
 
     public function getEventStoreReferenceName(): string
     {
         return $this->eventStoreReferenceName;
-    }
-
-    public function getProjectionConnectionReferenceName(): string
-    {
-        return $this->projectionConnectionReferenceName;
     }
 
     public function getOptions(): array

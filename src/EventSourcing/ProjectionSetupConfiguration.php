@@ -4,6 +4,7 @@
 namespace Ecotone\EventSourcing;
 
 
+use Ecotone\Messaging\NullableMessageChannel;
 use Ecotone\Messaging\Support\Assert;
 use Prooph\EventStore\Pdo\Projection\GapDetection;
 use Prooph\EventStore\Pdo\Projection\PdoEventStoreReadModelProjector;
@@ -12,25 +13,21 @@ use Prooph\EventStore\Projection\ReadModelProjector;
 
 class ProjectionSetupConfiguration
 {
-    private string $projectionName;
-    private ProjectionLifeCycleConfiguration $projectionLifeCycleConfiguration;
-    private bool $withAllStreams;
-    private array $streamNames;
-    private array $categories;
     /** @var ProjectionEventHandlerConfiguration[] */
     private array $projectionEventHandlers = [];
     /** @var array http://docs.getprooph.org/event-store/projections.html#Options https://github.com/prooph/pdo-event-store/pull/221/files */
     private array $projectionOptions;
     private bool $keepStateBetweenEvents = true;
 
-    private function __construct(string $projectionName, ProjectionLifeCycleConfiguration $projectionLifeCycleConfiguration, bool $withAllStreams, array $streamNames, array $categories)
+    private function __construct(
+        private string $projectionName,
+        private ProjectionLifeCycleConfiguration $projectionLifeCycleConfiguration,
+        private string $eventStoreReferenceName,
+        private bool $withAllStreams,
+        private array $streamNames,
+        private array $categories
+    )
     {
-        $this->projectionName = $projectionName;
-        $this->withAllStreams = $withAllStreams;
-        $this->streamNames = $streamNames;
-        $this->categories = $categories;
-        $this->projectionLifeCycleConfiguration = $projectionLifeCycleConfiguration;
-
         $this->projectionOptions = [
             PdoEventStoreReadModelProjector::OPTION_GAP_DETECTION => new GapDetection(),
 //            PdoEventStoreReadModelProjector::DEFAULT_LOCK_TIMEOUT_MS => 0,
@@ -38,29 +35,29 @@ class ProjectionSetupConfiguration
         ];
     }
 
-    public static function fromStream(string $projectionName, ProjectionLifeCycleConfiguration $projectionLifeCycleConfiguration, string $streamName): static
+    public static function fromStream(string $projectionName, ProjectionLifeCycleConfiguration $projectionLifeCycleConfiguration, string $eventStoreReferenceName, string $streamName): static
     {
-        return new static ($projectionName, $projectionLifeCycleConfiguration,false, [$streamName], []);
+        return new static ($projectionName, $projectionLifeCycleConfiguration, $eventStoreReferenceName,false, [$streamName], []);
     }
 
-    public static function fromStreams(string $projectionName, ProjectionLifeCycleConfiguration $projectionLifeCycleConfiguration, string ...$streamNames): static
+    public static function fromStreams(string $projectionName, ProjectionLifeCycleConfiguration $projectionLifeCycleConfiguration, string $eventStoreReferenceName, string ...$streamNames): static
     {
-        return new static($projectionName, $projectionLifeCycleConfiguration,false, $streamNames, []);
+        return new static($projectionName, $projectionLifeCycleConfiguration, $eventStoreReferenceName,false, $streamNames, []);
     }
 
-    public static function fromCategory(string $projectionName, ProjectionLifeCycleConfiguration $projectionLifeCycleConfiguration, string $name): static
+    public static function fromCategory(string $projectionName, ProjectionLifeCycleConfiguration $projectionLifeCycleConfiguration, string $eventStoreReferenceName, string $name): static
     {
-        return new static($projectionName, $projectionLifeCycleConfiguration,false, [], [$name]);
+        return new static($projectionName, $projectionLifeCycleConfiguration, $eventStoreReferenceName,false, [], [$name]);
     }
 
-    public static function fromCategories(string $projectionName, ProjectionLifeCycleConfiguration $projectionLifeCycleConfiguration, string ...$names): static
+    public static function fromCategories(string $projectionName, ProjectionLifeCycleConfiguration $projectionLifeCycleConfiguration, string $eventStoreReferenceName, string ...$names): static
     {
-        return new static($projectionName, $projectionLifeCycleConfiguration,false, [], $names);
+        return new static($projectionName, $projectionLifeCycleConfiguration, $eventStoreReferenceName,false, [], $names);
     }
 
-    public static function fromAll(string $projectionName, ProjectionLifeCycleConfiguration $projectionLifeCycleConfiguration): static
+    public static function fromAll(string $projectionName, string $eventStoreReferenceName, ProjectionLifeCycleConfiguration $projectionLifeCycleConfiguration): static
     {
-        return new static($projectionName, $projectionLifeCycleConfiguration,true, [], []);
+        return new static($projectionName, $projectionLifeCycleConfiguration, $eventStoreReferenceName,true, [], []);
     }
 
     public function withKeepingStateBetweenEvents(bool $keepState) : static
@@ -75,13 +72,18 @@ class ProjectionSetupConfiguration
         return $this->keepStateBetweenEvents;
     }
 
-    public function withProjectionEventHandler(string $eventName, string $className, string $methodName, string $eventHandlerRequestChannel) : static
+    public function withProjectionEventHandler(string $eventName, string $className, string $methodName, string $synchronousEventHandlerRequestChannel, string $asynchronousEventHandlerRequestChannel) : static
     {
         Assert::keyNotExists($this->projectionEventHandlers, $eventName, "Projection {$this->projectionName} has incorrect configuration. Can't register event handler twice for the same event {$eventName}");
 
-        $this->projectionEventHandlers[$eventName] = new ProjectionEventHandlerConfiguration($className, $methodName, $eventHandlerRequestChannel);
+        $this->projectionEventHandlers[$eventName] = new ProjectionEventHandlerConfiguration($className, $methodName, $synchronousEventHandlerRequestChannel, $asynchronousEventHandlerRequestChannel);
 
         return $this;
+    }
+
+    public function getEventStoreReferenceName(): string
+    {
+        return $this->eventStoreReferenceName;
     }
 
     public function withOptions(array $options) : static
@@ -124,5 +126,17 @@ class ProjectionSetupConfiguration
     public function getProjectionOptions(): array
     {
         return $this->projectionOptions;
+    }
+
+    public function getTriggeringChannelName() : string
+    {
+        if ($this->getProjectionEventHandlers()) {
+            /** @var ProjectionSetupConfiguration $first */
+            $first = reset($this->projectionEventHandlers);
+
+            return $first->getTriggeringChannelName();
+        }
+
+        return NullableMessageChannel::CHANNEL_NAME;
     }
 }

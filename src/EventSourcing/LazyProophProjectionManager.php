@@ -2,6 +2,7 @@
 
 namespace Ecotone\EventSourcing;
 
+use Ecotone\Messaging\Gateway\MessagingEntrypoint;
 use Ecotone\Messaging\Handler\ReferenceSearchService;
 use Prooph\EventStore\Pdo\Projection\MariaDbProjectionManager;
 use Prooph\EventStore\Pdo\Projection\PostgresProjectionManager;
@@ -15,14 +16,15 @@ use Prooph\EventStore\Projection\ReadModelProjector;
 class LazyProophProjectionManager implements ProjectionManager
 {
     private ?ProjectionManager $lazyInitializedProjectionManager = null;
-    private EventSourcingConfiguration $eventSourcingConfiguration;
-    private ReferenceSearchService $referenceSearchService;
 
-    public function __construct(EventSourcingConfiguration $eventSourcingConfiguration, ReferenceSearchService $referenceSearchService)
-    {
-        $this->eventSourcingConfiguration = $eventSourcingConfiguration;
-        $this->referenceSearchService = $referenceSearchService;
-    }
+    /**
+     * @param ProjectionSetupConfiguration[] $projectionSetupConfigurations
+     */
+    public function __construct(
+        private EventSourcingConfiguration $eventSourcingConfiguration,
+        private array $projectionSetupConfigurations,
+        private ReferenceSearchService $referenceSearchService
+    ) {}
 
     private function getProjectionManager() : ProjectionManager
     {
@@ -64,11 +66,19 @@ class LazyProophProjectionManager implements ProjectionManager
     public function deleteProjection(string $name, bool $deleteEmittedEvents): void
     {
         $this->getProjectionManager()->deleteProjection($name, $deleteEmittedEvents);
+
+        /** @var MessagingEntrypoint $messagingEntrypoint */
+        $messagingEntrypoint = $this->referenceSearchService->get(MessagingEntrypoint::class);
+        $messagingEntrypoint->send([], $this->projectionSetupConfigurations[$name]->getTriggeringChannelName());
     }
 
     public function resetProjection(string $name): void
     {
         $this->getProjectionManager()->resetProjection($name);
+
+        /** @var MessagingEntrypoint $messagingEntrypoint */
+        $messagingEntrypoint = $this->referenceSearchService->get(MessagingEntrypoint::class);
+        $messagingEntrypoint->send([], $this->projectionSetupConfigurations[$name]->getTriggeringChannelName());
     }
 
     public function stopProjection(string $name): void

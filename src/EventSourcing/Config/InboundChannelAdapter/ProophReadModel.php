@@ -4,31 +4,26 @@
 namespace Ecotone\EventSourcing\Config\InboundChannelAdapter;
 
 
+use Ecotone\EventSourcing\ProjectionLifeCycleConfiguration;
+use Ecotone\EventSourcing\ProjectionRunningConfiguration;
 use Ecotone\Messaging\Gateway\MessagingEntrypoint;
 use Prooph\EventStore\Projection\ReadModel;
 
 class ProophReadModel implements ReadModel
 {
-    private MessagingEntrypoint $messagingEntrypoint;
-    private ?string $initializationRequestChannel;
-    private ?string $resetRequestChannel;
-    private ?string $deleteRequestChannel;
-
-    public function __construct(MessagingEntrypoint $messagingEntrypoint, ?string $initializationRequestChannel, ?string $resetRequestChannel, ?string $deleteRequestChannel)
-    {
-        $this->initializationRequestChannel = $initializationRequestChannel;
-        $this->resetRequestChannel = $resetRequestChannel;
-        $this->deleteRequestChannel = $deleteRequestChannel;
-        $this->messagingEntrypoint = $messagingEntrypoint;
-    }
+    public function __construct(
+        private MessagingEntrypoint $messagingEntrypoint,
+        private ProjectionLifeCycleConfiguration $projectionLifeCycleConfiguration,
+        private string $triggeringChannelName
+    ) {}
 
     public function init(): void
     {
-        if (!$this->initializationRequestChannel) {
+        if (!$this->projectionLifeCycleConfiguration->getInitializationRequestChannel()) {
             return;
         }
 
-        $this->messagingEntrypoint->send([], $this->initializationRequestChannel);
+        $this->messagingEntrypoint->send([], $this->projectionLifeCycleConfiguration->getInitializationRequestChannel());
     }
 
     public function isInitialized(): bool
@@ -38,20 +33,20 @@ class ProophReadModel implements ReadModel
 
     public function reset(): void
     {
-        if (!$this->resetRequestChannel) {
+        if (!$this->projectionLifeCycleConfiguration->getResetRequestChannel()) {
             return;
         }
 
-        $this->messagingEntrypoint->send([], $this->resetRequestChannel);
+        $this->messagingEntrypoint->send([], $this->projectionLifeCycleConfiguration->getResetRequestChannel());
     }
 
     public function delete(): void
     {
-        if (!$this->deleteRequestChannel) {
+        if (!$this->projectionLifeCycleConfiguration->getDeleteRequestChannel()) {
             return;
         }
 
-        $this->messagingEntrypoint->send([], $this->deleteRequestChannel);
+        $this->messagingEntrypoint->send([], $this->projectionLifeCycleConfiguration->getDeleteRequestChannel());
     }
 
     public function stack(string $operation, ...$args): void

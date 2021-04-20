@@ -5,6 +5,7 @@ namespace Ecotone\EventSourcing\Config\InboundChannelAdapter;
 
 use Ecotone\EventSourcing\EventSourcingConfiguration;
 use Ecotone\EventSourcing\LazyProophProjectionManager;
+use Ecotone\EventSourcing\ProjectionRunningConfiguration;
 use Ecotone\EventSourcing\ProjectionSetupConfiguration;
 use Ecotone\Messaging\Gateway\MessagingEntrypoint;
 use Ecotone\Messaging\Handler\ChannelResolver;
@@ -19,16 +20,14 @@ use Ecotone\Messaging\MessageHandler;
 
 class ProjectionExecutorBuilder extends InputOutputMessageHandlerBuilder implements MessageHandlerBuilder
 {
-    private EventSourcingConfiguration $eventSourcingConfiguration;
-    private ProjectionSetupConfiguration $projectionConfiguration;
-    private string $methodName;
-
-    public function __construct(EventSourcingConfiguration $eventSourcingConfiguration, ProjectionSetupConfiguration $projectionConfiguration, string $methodName)
-    {
-        $this->eventSourcingConfiguration = $eventSourcingConfiguration;
-        $this->projectionConfiguration = $projectionConfiguration;
-        $this->methodName = $methodName;
-    }
+    public function __construct(
+        private EventSourcingConfiguration $eventSourcingConfiguration,
+        private ProjectionSetupConfiguration $projectionSetupConfiguration,
+        private array $projectSetupConfigurations,
+        private ProjectionRunningConfiguration $projectionRunningConfiguration,
+        private string $methodName
+    )
+    {}
 
     public function getInterceptedInterface(InterfaceToCallRegistry $interfaceToCallRegistry): InterfaceToCall
     {
@@ -39,8 +38,9 @@ class ProjectionExecutorBuilder extends InputOutputMessageHandlerBuilder impleme
     {
         return ServiceActivatorBuilder::createWithDirectReference(
             new ProjectionExecutor(
-                new LazyProophProjectionManager($this->eventSourcingConfiguration, $referenceSearchService),
-                $this->projectionConfiguration
+                new LazyProophProjectionManager($this->eventSourcingConfiguration, $this->projectSetupConfigurations, $referenceSearchService),
+                $this->projectionSetupConfiguration,
+                $this->projectionRunningConfiguration
             ),
             $this->methodName
         )

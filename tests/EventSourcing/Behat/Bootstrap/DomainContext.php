@@ -106,7 +106,6 @@ class DomainContext extends TestCase implements Context
     public function iDeleteProjectionForAllInProgressTickets()
     {
         self::$messagingSystem->runConsoleCommand(EventSourcingModule::ECOTONE_ES_DELETE_PROJECTION, ["name" => InProgressTicketList::IN_PROGRESS_TICKET_PROJECTION]);
-        self::$messagingSystem->run(InProgressTicketList::IN_PROGRESS_TICKET_PROJECTION);
     }
 
     /**
@@ -130,7 +129,6 @@ class DomainContext extends TestCase implements Context
     public function iResetTheProjectionForInProgressTickets()
     {
         self::$messagingSystem->runConsoleCommand(EventSourcingModule::ECOTONE_ES_RESET_PROJECTION, ["name" => InProgressTicketList::IN_PROGRESS_TICKET_PROJECTION]);
-        self::$messagingSystem->run(InProgressTicketList::IN_PROGRESS_TICKET_PROJECTION);
     }
 
     /**
