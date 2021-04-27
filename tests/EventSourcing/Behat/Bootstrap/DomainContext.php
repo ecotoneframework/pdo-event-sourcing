@@ -115,8 +115,12 @@ class DomainContext extends TestCase implements Context
     {
         $wasProjectionDeleted = false;
         try {
-            $this->getQueryBus()->sendWithRouting("getInProgressTickets", []);
+            $result = $this->getQueryBus()->sendWithRouting("getInProgressTickets", []);
         }catch (TableNotFoundException $exception) {
+            $result = [];
+        }
+
+        if (!$result) {
             $wasProjectionDeleted = true;
         }
 
@@ -194,6 +198,7 @@ class DomainContext extends TestCase implements Context
                 case "Test\Ecotone\EventSourcing\Fixture\TicketWithPollingProjection": {break;}
                 case "Test\Ecotone\EventSourcing\Fixture\TicketWithAsynchronousEventDrivenProjection": {break;}
                 case "Test\Ecotone\EventSourcing\Fixture\TicketWithSynchronousEventDrivenProjection": {break;}
+                case "Test\Ecotone\EventSourcing\Fixture\TicketWithLimitedLoad": {break;}
                 default:
                 {
                     throw new InvalidArgumentException("Namespace {$namespace} not yet implemented");

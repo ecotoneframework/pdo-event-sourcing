@@ -86,7 +86,7 @@ class ProjectionExecutor
         $this->lazyProophProjectionManager->ensureEventStoreIsPrepared();
 
         if ($this->projectionRunningConfiguration->isTestingSetup()) {
-            usleep(10);
+            usleep(40);
         }
         $projection->run(false);
     }

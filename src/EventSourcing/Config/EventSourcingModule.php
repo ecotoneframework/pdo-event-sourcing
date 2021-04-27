@@ -22,6 +22,7 @@ use Ecotone\EventSourcing\ProjectionSetupConfiguration;
 use Ecotone\EventSourcing\ProjectionLifeCycleConfiguration;
 use Ecotone\EventSourcing\ProjectionManager;
 use Ecotone\EventSourcing\EventSourcingRepositoryBuilder;
+use Ecotone\Messaging\Attribute\EndpointAnnotation;
 use Ecotone\Messaging\Attribute\ModuleAnnotation;
 use Ecotone\Messaging\Config\Annotation\AnnotatedDefinitionReference;
 use Ecotone\Messaging\Config\Annotation\ModuleConfiguration\AsynchronousModule;
@@ -195,14 +196,17 @@ class EventSourcingModule extends NoExternalConfigurationModule
         foreach ($projectionEventHandlers as $projectionEventHandler) {
             /** @var Projection $projectionAttribute */
             $projectionAttribute     = $projectionEventHandler->getAnnotationForClass();
+            /** @var EndpointAnnotation $handlerAttribute */
+            $handlerAttribute     = $projectionEventHandler->getAnnotationForMethod();
             $projectionConfiguration = $projectionSetupConfigurations[$projectionAttribute->getName()];
 
             $eventHandlerChannelName = ModellingHandlerModule::getHandlerChannel($projectionEventHandler);
+            $synchronousEventHandlerRequestChannel = AsynchronousModule::create($annotationRegistrationService)->getSynchronousChannelFor($eventHandlerChannelName, $handlerAttribute->getEndpointId());
             $projectionSetupConfigurations[$projectionAttribute->getName()] = $projectionConfiguration->withProjectionEventHandler(
                 ModellingHandlerModule::getNamedMessageChannelForEventHandler($projectionEventHandler),
                 $projectionEventHandler->getClassName(),
                 $projectionEventHandler->getMethodName(),
-                AsynchronousModule::create($annotationRegistrationService)->getSynchronousChannelFor($eventHandlerChannelName),
+                $synchronousEventHandlerRequestChannel,
                 $eventHandlerChannelName
             );
         }
