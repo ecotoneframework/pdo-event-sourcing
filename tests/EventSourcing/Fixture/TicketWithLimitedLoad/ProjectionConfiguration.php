@@ -16,8 +16,8 @@ class ProjectionConfiguration
     public function configureProjection()
     {
         return [
-//            EventSourcingConfiguration::createWithDefaults()
-//                ->withLoadBatchSize(1)
+            EventSourcingConfiguration::createWithDefaults()
+                ->withLoadBatchSize(1)
         ];
     }
 }
