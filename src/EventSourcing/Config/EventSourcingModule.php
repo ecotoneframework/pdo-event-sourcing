@@ -526,8 +526,9 @@ class EventSourcingModule extends NoExternalConfigurationModule
     {
         $messageHandlerBuilder = EventStoreBuilder::create($methodName, $endpointConverters, $eventSourcingConfiguration);
         $configuration->registerMessageHandler($messageHandlerBuilder);
+
         $configuration->registerGatewayBuilder(
-            GatewayProxyBuilder::create($eventSourcingConfiguration->getProjectManagerReferenceName(), EventStore::class, $methodName, $messageHandlerBuilder->getInputMessageChannelName())
+            GatewayProxyBuilder::create($eventSourcingConfiguration->getEventStoreReferenceName(), EventStore::class, $methodName, $messageHandlerBuilder->getInputMessageChannelName())
                 ->withParameterConverters($gatewayConverters)
         );
     }
