@@ -11,14 +11,14 @@ interface EventStore
     public function updateStreamMetadata(string $streamName, array $newMetadata): void;
 
     /**
-     * @param Event[]|object[]|array[] $streamStreamEvents
+     * @param Event[]|object[]|array[] $streamEvents
      * @param string[] $streamMetadata
      */
-    public function create(string $streamName, array $streamStreamEvents, array $streamMetadata): void;
+    public function create(string $streamName, array $streamEvents, array $streamMetadata): void;
     /**
-     * @param Event[]|object[]|array[] $streamStreamEvents
+     * @param Event[]|object[]|array[] $streamEvents
      */
-    public function appendTo(string $streamName, array $streamStreamEvents): void;
+    public function appendTo(string $streamName, array $streamEvents): void;
 
     public function delete(string $streamName): void;
 

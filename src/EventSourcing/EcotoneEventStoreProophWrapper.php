@@ -60,7 +60,7 @@ class EcotoneEventStoreProophWrapper implements EventStore
     }
 
     /**
-     * @param Event[]|object[]|array[] $streamEvents
+     * @param Event[]|object[]|array[] $events
      */
     private function convertProophEvents(array $events): ArrayIterator
     {
