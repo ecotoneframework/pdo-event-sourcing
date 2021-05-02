@@ -74,8 +74,8 @@ class EcotoneEventStoreProophWrapper implements EventStore
             }
 
             $proophEvents[] = new ProophMessage(
-                Uuid::fromString($metadata[MessageHeaders::MESSAGE_ID]),
-                new DateTimeImmutable("@" . $metadata[MessageHeaders::TIMESTAMP], new DateTimeZone('UTC')),
+                array_key_exists($metadata[MessageHeaders::MESSAGE_ID], $metadata) ? Uuid::fromString($metadata[MessageHeaders::MESSAGE_ID]) : Uuid::uuid4(),
+                array_key_exists($metadata[MessageHeaders::TIMESTAMP], $metadata) ? new DateTimeImmutable("@" . $metadata[MessageHeaders::TIMESTAMP], new DateTimeZone('UTC')) : new DateTimeImmutable("now", new DateTimeZone('UTC')),
                 is_array($payload) ? $payload : $this->conversionService->convert($payload, TypeDescriptor::createFromVariable($payload), MediaType::createApplicationXPHP(), TypeDescriptor::createArrayType(), MediaType::createApplicationXPHP()),
                 $metadata,
                 $this->eventMapper->mapEventToName($eventToConvert)
