@@ -6,7 +6,8 @@ use Ecotone\EventSourcing\Attribute\Stream;
 use Ecotone\Modelling\Attribute\AggregateFactory;
 use Ecotone\Modelling\Attribute\AggregateIdentifier;
 use Ecotone\Modelling\Attribute\CommandHandler;
-use Ecotone\Modelling\Attribute\EventSourcedAggregate;
+use Ecotone\Modelling\Attribute\EventSourcingAggregate;
+use Ecotone\Modelling\Attribute\EventSourcingHandler;
 use Ecotone\Modelling\WithAggregateEvents;
 use Ecotone\Modelling\WithAggregateVersioning;
 use Test\Ecotone\EventSourcing\Fixture\Basket\Command\AddProduct;
@@ -17,7 +18,7 @@ use Test\Ecotone\EventSourcing\Fixture\Ticket\Event\AssignedPersonWasChanged;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Event\TicketWasRegistered;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Ticket;
 
-#[EventSourcedAggregate(true)]
+#[EventSourcingAggregate(true)]
 #[Stream(self::BASKET_STREAM)]
 class Basket
 {
@@ -28,8 +29,6 @@ class Basket
 
     #[AggregateIdentifier]
     private string $id;
-
-    private function __construct() {}
 
     #[CommandHandler]
     public static function create(CreateBasket $command) : static
@@ -46,21 +45,8 @@ class Basket
         $this->recordThat(new ProductWasAddedToBasket($this->id, $command->getProductName()));
     }
 
-    #[AggregateFactory]
-    public static function restoreFrom(array $events) : self
-    {
-        $basket = new Basket();
-
-        foreach ($events as $event) {
-            match (get_class($event)) {
-                BasketWasCreated::class => $basket->applyBasketWasCreated($event)
-            };
-        }
-
-        return $basket;
-    }
-
-    private function applyBasketWasCreated(BasketWasCreated $basketWasCreated)
+    #[EventSourcingHandler]
+    public function applyBasketWasCreated(BasketWasCreated $basketWasCreated): void
     {
         $this->id = $basketWasCreated->getId();
     }

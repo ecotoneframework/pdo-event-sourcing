@@ -1,7 +1,7 @@
 <?php
 
 
-namespace Test\Ecotone\EventSourcing\Fixture\Ticket\Projection;
+namespace Test\Ecotone\EventSourcing\Fixture\TicketWithAsynchronousEventDrivenProjection;
 
 use Doctrine\DBAL\Connection;
 use Ecotone\EventSourcing\Attribute\Projection;

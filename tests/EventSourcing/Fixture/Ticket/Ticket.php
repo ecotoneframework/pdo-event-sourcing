@@ -8,7 +8,8 @@ use Ecotone\Modelling\Attribute\Aggregate;
 use Ecotone\Modelling\Attribute\AggregateFactory;
 use Ecotone\Modelling\Attribute\AggregateIdentifier;
 use Ecotone\Modelling\Attribute\CommandHandler;
-use Ecotone\Modelling\Attribute\EventSourcedAggregate;
+use Ecotone\Modelling\Attribute\EventSourcingAggregate;
+use Ecotone\Modelling\Attribute\EventSourcingHandler;
 use Ecotone\Modelling\WithAggregateVersioning;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Command\ChangeAssignedPerson;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Command\CloseTicket;
@@ -18,7 +19,7 @@ use Test\Ecotone\EventSourcing\Fixture\Ticket\Event\TicketWasClosed;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Event\TicketWasRegistered;
 use Test\Ecotone\Modelling\Fixture\InterceptedCommandAggregate\EventWasLogged;
 
-#[EventSourcedAggregate]
+#[EventSourcingAggregate]
 class Ticket
 {
     use WithAggregateVersioning;
@@ -27,8 +28,6 @@ class Ticket
     private string $ticketId;
     private string $assignedPerson;
     private string $ticketType;
-
-    private function __construct() {}
 
     #[CommandHandler]
     public static function register(RegisterTicket $command) : array
@@ -48,29 +47,16 @@ class Ticket
         return [new TicketWasClosed($this->ticketId)];
     }
 
-    #[AggregateFactory]
-    public static function restoreFrom(array $events) : self
-    {
-        $ticket = new Ticket();
-
-        foreach ($events as $event) {
-            match (get_class($event)) {
-                TicketWasRegistered::class => $ticket->applyTicketWasRegistered($event),
-                AssignedPersonWasChanged::class => $ticket->applyAssignedPersonWasChanged($event)
-            };
-        }
-
-        return $ticket;
-    }
-
-    private function applyTicketWasRegistered(TicketWasRegistered $event) : void
+    #[EventSourcingHandler]
+    public function applyTicketWasRegistered(TicketWasRegistered $event) : void
     {
         $this->ticketId       = $event->getTicketId();
         $this->assignedPerson = $event->getAssignedPerson();
         $this->ticketType     = $event->getTicketType();
     }
 
-    private function applyAssignedPersonWasChanged(AssignedPersonWasChanged $event) : void
+    #[EventSourcingHandler]
+    public function applyAssignedPersonWasChanged(AssignedPersonWasChanged $event) : void
     {
         $this->assignedPerson = $event->getAssignedPerson();
     }

@@ -5,7 +5,6 @@ namespace Test\Ecotone\EventSourcing\Fixture\TicketWithPollingProjection;
 use Ecotone\EventSourcing\ProjectionRunningConfiguration;
 use Ecotone\Messaging\Attribute\ServiceContext;
 use Ecotone\Messaging\Endpoint\PollingMetadata;
-use Test\Ecotone\EventSourcing\Fixture\Ticket\Projection\InProgressTicketList;
 
 class ProjectionConfiguration
 {

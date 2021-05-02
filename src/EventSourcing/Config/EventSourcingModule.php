@@ -47,7 +47,7 @@ use Ecotone\Messaging\Handler\TypeDescriptor;
 use Ecotone\Messaging\Precedence;
 use Ecotone\Messaging\Support\Assert;
 use Ecotone\Modelling\Attribute\EventHandler;
-use Ecotone\Modelling\Attribute\EventSourcedAggregate;
+use Ecotone\Modelling\Attribute\EventSourcingAggregate;
 use Ecotone\Modelling\Config\ModellingHandlerModule;
 use Laminas\Service;
 use Prooph\EventStore\Projection\ReadModel;
@@ -438,7 +438,7 @@ class EventSourcingModule extends NoExternalConfigurationModule
             $eventSourcingConfiguration,
             $configuration,
             self::ECOTONE_ES_DELETE_PROJECTION,
-            [ConsoleCommandParameter::create("name", "ecotone.eventSourcing.manager.name"), ConsoleCommandParameter::createWithDefaultValue("deleteEmittedEvents", "ecotone.eventSourcing.manager.deleteEmittedEvents", true)]
+            [ConsoleCommandParameter::create("name", "ecotone.eventSourcing.manager.name", false), ConsoleCommandParameter::createWithDefaultValue("deleteEmittedEvents", "ecotone.eventSourcing.manager.deleteEmittedEvents", true, true)]
         );
 
         $this->registerProjectionManagerAction(
@@ -448,7 +448,7 @@ class EventSourcingModule extends NoExternalConfigurationModule
             $eventSourcingConfiguration,
             $configuration,
             self::ECOTONE_ES_RESET_PROJECTION,
-            [ConsoleCommandParameter::create("name", "ecotone.eventSourcing.manager.name")]
+            [ConsoleCommandParameter::create("name", "ecotone.eventSourcing.manager.name", false)]
         );
 
         $this->registerProjectionManagerAction(
@@ -458,7 +458,7 @@ class EventSourcingModule extends NoExternalConfigurationModule
             $eventSourcingConfiguration,
             $configuration,
             self::ECOTONE_ES_STOP_PROJECTION,
-            [ConsoleCommandParameter::create("name", "ecotone.eventSourcing.manager.name")]
+            [ConsoleCommandParameter::create("name", "ecotone.eventSourcing.manager.name", false)]
         );
 
         $this->registerProjectionManagerAction(

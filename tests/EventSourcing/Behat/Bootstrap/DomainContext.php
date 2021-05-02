@@ -25,8 +25,8 @@ use Test\Ecotone\EventSourcing\Fixture\Basket\Command\CreateBasket;
 use Test\Ecotone\EventSourcing\Fixture\Basket\Projection\BasketList;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Command\CloseTicket;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Command\RegisterTicket;
-use Test\Ecotone\EventSourcing\Fixture\Ticket\Projection\InProgressTicketList;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\TicketEventConverter;
+use Test\Ecotone\EventSourcing\Fixture\TicketWithPollingProjection\InProgressTicketList;
 
 class DomainContext extends TestCase implements Context
 {
@@ -187,7 +187,7 @@ class DomainContext extends TestCase implements Context
             switch ($namespace) {
                 case "Test\Ecotone\EventSourcing\Fixture\Ticket":
                 {
-                    $objects = array_merge($objects, [new TicketEventConverter(), new InProgressTicketList(self::$connection)]);
+                    $objects = array_merge($objects, [new TicketEventConverter()]);
                     break;
                 }
                 case "Test\Ecotone\EventSourcing\Fixture\Basket":
@@ -195,9 +195,18 @@ class DomainContext extends TestCase implements Context
                     $objects = array_merge($objects, [new BasketEventConverter(), new BasketList()]);
                     break;
                 }
-                case "Test\Ecotone\EventSourcing\Fixture\TicketWithPollingProjection": {break;}
-                case "Test\Ecotone\EventSourcing\Fixture\TicketWithAsynchronousEventDrivenProjection": {break;}
-                case "Test\Ecotone\EventSourcing\Fixture\TicketWithSynchronousEventDrivenProjection": {break;}
+                case "Test\Ecotone\EventSourcing\Fixture\TicketWithPollingProjection": {
+                    $objects = array_merge($objects, [new InProgressTicketList(self::$connection)]);
+                    break;
+                }
+                case "Test\Ecotone\EventSourcing\Fixture\TicketWithAsynchronousEventDrivenProjection": {
+                    $objects = array_merge($objects, [new \Test\Ecotone\EventSourcing\Fixture\TicketWithAsynchronousEventDrivenProjection\InProgressTicketList(self::$connection)]);
+                    break;
+                }
+                case "Test\Ecotone\EventSourcing\Fixture\TicketWithSynchronousEventDrivenProjection": {
+                    $objects = array_merge($objects, [new \Test\Ecotone\EventSourcing\Fixture\TicketWithSynchronousEventDrivenProjection\InProgressTicketList(self::$connection)]);
+                    break;
+                }
                 case "Test\Ecotone\EventSourcing\Fixture\TicketWithLimitedLoad": {break;}
                 default:
                 {

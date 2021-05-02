@@ -7,7 +7,6 @@ use Ecotone\EventSourcing\ProjectionRunningConfiguration;
 use Ecotone\Messaging\Attribute\ServiceContext;
 use Ecotone\Messaging\Endpoint\PollingMetadata;
 use Test\Ecotone\EventSourcing\Fixture\Basket\Projection\BasketList;
-use Test\Ecotone\EventSourcing\Fixture\Ticket\Projection\InProgressTicketList;
 
 class MessagingConfiguration
 {
