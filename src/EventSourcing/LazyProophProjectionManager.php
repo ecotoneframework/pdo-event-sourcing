@@ -5,6 +5,7 @@ namespace Ecotone\EventSourcing;
 use Ecotone\Messaging\Gateway\MessagingEntrypoint;
 use Ecotone\Messaging\Handler\ReferenceSearchService;
 use Prooph\EventStore\Pdo\Projection\MariaDbProjectionManager;
+use Prooph\EventStore\Pdo\Projection\MySqlProjectionManager;
 use Prooph\EventStore\Pdo\Projection\PostgresProjectionManager;
 use Prooph\EventStore\Projection\ProjectionManager;
 use Prooph\EventStore\Projection\ProjectionStatus;
@@ -36,7 +37,7 @@ class LazyProophProjectionManager implements ProjectionManager
 
         $this->lazyInitializedProjectionManager = match ($eventStore->getEventStoreType()) {
             LazyProophEventStore::EVENT_STORE_TYPE_POSTGRES => new PostgresProjectionManager($eventStore->getEventStore(), $eventStore->getWrappedConnection(), $this->eventSourcingConfiguration->getEventStreamTableName(), $this->eventSourcingConfiguration->getProjectionsTable()),
-            LazyProophEventStore::EVENT_STORE_TYPE_MYSQL => new PostgresProjectionManager($eventStore->getEventStore(), $eventStore->getWrappedConnection(), $this->eventSourcingConfiguration->getEventStreamTableName(), $this->eventSourcingConfiguration->getProjectionsTable()),
+            LazyProophEventStore::EVENT_STORE_TYPE_MYSQL => new MySqlProjectionManager($eventStore->getEventStore(), $eventStore->getWrappedConnection(), $this->eventSourcingConfiguration->getEventStreamTableName(), $this->eventSourcingConfiguration->getProjectionsTable()),
             LazyProophEventStore::EVENT_STORE_TYPE_MARIADB => new MariaDbProjectionManager($eventStore->getEventStore(), $eventStore->getWrappedConnection(), $this->eventSourcingConfiguration->getEventStreamTableName(), $this->eventSourcingConfiguration->getProjectionsTable())
         };
 
@@ -92,7 +93,7 @@ class LazyProophProjectionManager implements ProjectionManager
 
     public function fetchProjectionNames(?string $filter, int $limit = 20, int $offset = 0): array
     {
-        $this->getProjectionManager()->fetchProjectionNames($filter, $limit, $offset);
+        return $this->getProjectionManager()->fetchProjectionNames($filter, $limit, $offset);
     }
 
     public function fetchProjectionNamesRegex(string $regex, int $limit = 20, int $offset = 0): array
