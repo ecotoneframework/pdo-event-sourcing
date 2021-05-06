@@ -1,7 +1,7 @@
 <?php
 
 
-namespace Test\Ecotone\EventSourcing\Fixture\Basket\Projection;
+namespace Test\Ecotone\EventSourcing\Fixture\BasketListProjection;
 
 use Ecotone\EventSourcing\Attribute\Projection;
 use Ecotone\Modelling\Attribute\EventHandler;

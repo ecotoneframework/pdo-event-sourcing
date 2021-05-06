@@ -3,9 +3,9 @@
 
 namespace Test\Ecotone\EventSourcing\Fixture\Basket\Event;
 
-use Ecotone\EventSourcing\Attribute\EventSourcedEvent;
+use Ecotone\Modelling\Attribute\NamedEvent;
 
-#[EventSourcedEvent(self::EVENT_NAME)]
+#[NamedEvent(self::EVENT_NAME)]
 class ProductWasAddedToBasket
 {
     public const EVENT_NAME = "basket.product_was_added";

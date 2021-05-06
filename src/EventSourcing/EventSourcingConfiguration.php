@@ -35,13 +35,16 @@ class EventSourcingConfiguration
         return new self();
     }
 
-    /**
-     * @param string $persistenceStrategy choose between single|aggregate
-     * @return $this
-     */
-    public function withPersistenceStrategy(string $persistenceStrategy) : static
+    public function withSingleStreamPersistenceStrategy(): static
     {
-        $this->persistenceStrategy = $persistenceStrategy;
+        $this->persistenceStrategy = LazyProophEventStore::SINGLE_STREAM_PERSISTENCE;
+
+        return $this;
+    }
+
+    public function withStreamPerAggregatePersistenceStrategy(): static
+    {
+        $this->persistenceStrategy = LazyProophEventStore::AGGREGATE_STREAM_PERSISTENCE;
 
         return $this;
     }

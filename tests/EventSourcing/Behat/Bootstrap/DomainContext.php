@@ -2,9 +2,8 @@
 
 namespace Test\Ecotone\EventSourcing\Behat\Bootstrap;
 
-use Behat\Gherkin\Node\TableNode;
-use Behat\Behat\Tester\Exception\PendingException;
 use Behat\Behat\Context\Context;
+use Behat\Gherkin\Node\TableNode;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception\TableNotFoundException;
 use Ecotone\EventSourcing\Config\EventSourcingModule;
@@ -18,11 +17,13 @@ use Enqueue\Dbal\DbalConnectionFactory;
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 use Ramsey\Uuid\Uuid;
-use Test\Ecotone\EventSourcing\Fixture\Basket\Basket;
 use Test\Ecotone\EventSourcing\Fixture\Basket\BasketEventConverter;
 use Test\Ecotone\EventSourcing\Fixture\Basket\Command\AddProduct;
 use Test\Ecotone\EventSourcing\Fixture\Basket\Command\CreateBasket;
-use Test\Ecotone\EventSourcing\Fixture\Basket\Projection\BasketList;
+use Test\Ecotone\EventSourcing\Fixture\BasketListProjection\BasketList;
+use Test\Ecotone\EventSourcing\Fixture\ProjectionFromCategoryUsingAggregatePerStream\FromCategoryUsingAggregatePerStreamProjection;
+use Test\Ecotone\EventSourcing\Fixture\ProjectionFromMultipleStreams\MultipleStreamsProjection;
+use Test\Ecotone\EventSourcing\Fixture\SpecificEventStream\SpecificEventStreamProjection;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Command\CloseTicket;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Command\RegisterTicket;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\TicketEventConverter;
@@ -149,7 +150,6 @@ class DomainContext extends TestCase implements Context
     public function iCreateBasketWithId(string $id)
     {
         $this->getCommandBus()->send(new CreateBasket($id));
-        self::$messagingSystem->run(BasketList::PROJECTION_NAME);
     }
 
     /**
@@ -192,7 +192,22 @@ class DomainContext extends TestCase implements Context
                 }
                 case "Test\Ecotone\EventSourcing\Fixture\Basket":
                 {
-                    $objects = array_merge($objects, [new BasketEventConverter(), new BasketList()]);
+                    $objects = array_merge($objects, [new BasketEventConverter()]);
+                    break;
+                }
+                case "Test\Ecotone\EventSourcing\Fixture\BasketListProjection":
+                {
+                    $objects = array_merge($objects, [new BasketList()]);
+                    break;
+                }
+                case "Test\Ecotone\EventSourcing\Fixture\SpecificEventStream":
+                {
+                    $objects = array_merge($objects, [new SpecificEventStreamProjection()]);
+                    break;
+                }
+                case "Test\Ecotone\EventSourcing\Fixture\ProjectionFromCategoryUsingAggregatePerStream":
+                {
+                    $objects = array_merge($objects, [new FromCategoryUsingAggregatePerStreamProjection()]);
                     break;
                 }
                 case "Test\Ecotone\EventSourcing\Fixture\TicketWithPollingProjection": {
@@ -205,6 +220,10 @@ class DomainContext extends TestCase implements Context
                 }
                 case "Test\Ecotone\EventSourcing\Fixture\TicketWithSynchronousEventDrivenProjection": {
                     $objects = array_merge($objects, [new \Test\Ecotone\EventSourcing\Fixture\TicketWithSynchronousEventDrivenProjection\InProgressTicketList(self::$connection)]);
+                    break;
+                }
+                case "Test\Ecotone\EventSourcing\Fixture\ProjectionFromMultipleStreams": {
+                    $objects = array_merge($objects, [new MultipleStreamsProjection()]);
                     break;
                 }
                 case "Test\Ecotone\EventSourcing\Fixture\TicketWithLimitedLoad": {break;}
@@ -243,5 +262,16 @@ class DomainContext extends TestCase implements Context
     public function iRunEndpointWithName($name)
     {
         self::$messagingSystem->run($name);
+    }
+
+    /**
+     * @Then the result of calling :arg1 should be :result
+     */
+    public function theResultOfCallingShouldBe(string $queryName, $result)
+    {
+        $this->assertEquals(
+            $result,
+            $this->getQueryBus()->sendWithRouting($queryName)
+        );
     }
 }

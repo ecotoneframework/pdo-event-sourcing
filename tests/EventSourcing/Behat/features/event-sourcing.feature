@@ -144,7 +144,9 @@ Feature: activating as aggregate order entity
   Scenario: I verify building projection from event sourced aggregate using custom stream name and simple arrays in projections
     Given I active messaging for namespaces
       | Test\Ecotone\EventSourcing\Fixture\Basket                      |
+      | Test\Ecotone\EventSourcing\Fixture\BasketListProjection                      |
     When I create basket with id 1000
+    And I run endpoint with name "basketList"
     Then I should see baskets:
       | id    | products    |
       | 1000  | []          |
@@ -152,3 +154,30 @@ Feature: activating as aggregate order entity
     Then I should see baskets:
       | id    | products    |
       | 1000  | ["milk"]    |
+
+  Scenario: Verify handling multiple streams for projection
+    Given I active messaging for namespaces
+      | Test\Ecotone\EventSourcing\Fixture\ProjectionFromMultipleStreams                      |
+      | Test\Ecotone\EventSourcing\Fixture\Basket                      |
+      | Test\Ecotone\EventSourcing\Fixture\Ticket                      |
+    When I create basket with id 1000
+    And I register "alert" ticket 1234 with assignation to "Marcus"
+    Then the result of calling "action_collector.getCount" should be 2
+
+  Scenario: Verify handling specific event stream when aggregate bases stream persistence is enabled
+    Given I active messaging for namespaces
+      | Test\Ecotone\EventSourcing\Fixture\SpecificEventStream                      |
+      | Test\Ecotone\EventSourcing\Fixture\Basket                      |
+      | Test\Ecotone\EventSourcing\Fixture\Ticket                      |
+    When I create basket with id 1000
+    And I create basket with id 1001
+    Then the result of calling "action_collector.getCount" should be 1
+
+  Scenario: Verify handling specific event stream when aggregate bases stream persistence is enabled
+    Given I active messaging for namespaces
+      | Test\Ecotone\EventSourcing\Fixture\ProjectionFromCategoryUsingAggregatePerStream                      |
+      | Test\Ecotone\EventSourcing\Fixture\Basket                      |
+      | Test\Ecotone\EventSourcing\Fixture\Ticket                      |
+    When I create basket with id 1000
+    And I create basket with id 1001
+    Then the result of calling "action_collector.getCount" should be 2

@@ -27,7 +27,7 @@ class EventSourcingRepositoryBuilderTest extends EventSourcingMessagingTest
     {
         $proophRepositoryBuilder = EventSourcingRepositoryBuilder::create(
             EventSourcingConfiguration::createWithDefaults()
-                ->withPersistenceStrategy(LazyProophEventStore::SINGLE_STREAM_PERSISTENCE)
+                ->withSingleStreamPersistenceStrategy()
         );
 
         $ticketId = Uuid::uuid4()->toString();
@@ -60,7 +60,7 @@ class EventSourcingRepositoryBuilderTest extends EventSourcingMessagingTest
     {
         $proophRepositoryBuilder = EventSourcingRepositoryBuilder::create(
             EventSourcingConfiguration::createWithDefaults()
-                ->withPersistenceStrategy(LazyProophEventStore::AGGREGATE_STREAM_PERSISTENCE)
+                ->withStreamPerAggregatePersistenceStrategy()
         );
 
         $firstTicketAggregate = Uuid::uuid4()->toString();
@@ -111,7 +111,7 @@ class EventSourcingRepositoryBuilderTest extends EventSourcingMessagingTest
     {
         $proophRepositoryBuilder = EventSourcingRepositoryBuilder::create(
             EventSourcingConfiguration::createWithDefaults()
-                ->withPersistenceStrategy(LazyProophEventStore::SINGLE_STREAM_PERSISTENCE)
+                ->withSingleStreamPersistenceStrategy()
         );
 
         $firstTicketAggregate = Uuid::uuid4()->toString();
@@ -162,7 +162,7 @@ class EventSourcingRepositoryBuilderTest extends EventSourcingMessagingTest
     {
         $proophRepositoryBuilder = EventSourcingRepositoryBuilder::create(
             EventSourcingConfiguration::createWithDefaults()
-                ->withPersistenceStrategy(LazyProophEventStore::SINGLE_STREAM_PERSISTENCE)
+                ->withSingleStreamPersistenceStrategy()
         );
 
         $ticketId = Uuid::uuid4()->toString();

@@ -5,7 +5,6 @@ namespace Ecotone\EventSourcing\Config;
 
 use Ecotone\AnnotationFinder\AnnotationFinder;
 use Ecotone\EventSourcing\AggregateStreamMapping;
-use Ecotone\EventSourcing\Attribute\EventSourcedEvent;
 use Ecotone\EventSourcing\Attribute\Projection;
 use Ecotone\EventSourcing\Attribute\ProjectionDelete;
 use Ecotone\EventSourcing\Attribute\ProjectionInitialization;
@@ -16,18 +15,17 @@ use Ecotone\EventSourcing\Config\InboundChannelAdapter\ProjectionExecutor;
 use Ecotone\EventSourcing\Config\InboundChannelAdapter\ProjectionExecutorBuilder;
 use Ecotone\EventSourcing\EventMapper;
 use Ecotone\EventSourcing\EventSourcingConfiguration;
+use Ecotone\EventSourcing\EventSourcingRepositoryBuilder;
 use Ecotone\EventSourcing\EventStore;
-use Ecotone\EventSourcing\ProjectionRunningConfiguration;
-use Ecotone\EventSourcing\ProjectionSetupConfiguration;
 use Ecotone\EventSourcing\ProjectionLifeCycleConfiguration;
 use Ecotone\EventSourcing\ProjectionManager;
-use Ecotone\EventSourcing\EventSourcingRepositoryBuilder;
+use Ecotone\EventSourcing\ProjectionRunningConfiguration;
+use Ecotone\EventSourcing\ProjectionSetupConfiguration;
 use Ecotone\Messaging\Attribute\EndpointAnnotation;
 use Ecotone\Messaging\Attribute\ModuleAnnotation;
 use Ecotone\Messaging\Config\Annotation\AnnotatedDefinitionReference;
 use Ecotone\Messaging\Config\Annotation\ModuleConfiguration\AsynchronousModule;
 use Ecotone\Messaging\Config\Annotation\ModuleConfiguration\NoExternalConfigurationModule;
-use Ecotone\Messaging\Config\BeforeSend\BeforeSendChannelInterceptorBuilder;
 use Ecotone\Messaging\Config\Configuration;
 use Ecotone\Messaging\Config\ConsoleCommandConfiguration;
 use Ecotone\Messaging\Config\ConsoleCommandParameter;
@@ -40,17 +38,14 @@ use Ecotone\Messaging\Handler\Gateway\ParameterToMessageConverter\GatewayPayload
 use Ecotone\Messaging\Handler\InterfaceToCall;
 use Ecotone\Messaging\Handler\Processor\MethodInvoker\Converter\HeaderBuilder;
 use Ecotone\Messaging\Handler\Processor\MethodInvoker\Converter\PayloadBuilder;
-use Ecotone\Messaging\Handler\Processor\MethodInvoker\Converter\ReferenceBuilder;
 use Ecotone\Messaging\Handler\Processor\MethodInvoker\MethodInterceptor;
 use Ecotone\Messaging\Handler\ServiceActivator\ServiceActivatorBuilder;
 use Ecotone\Messaging\Handler\TypeDescriptor;
 use Ecotone\Messaging\Precedence;
 use Ecotone\Messaging\Support\Assert;
 use Ecotone\Modelling\Attribute\EventHandler;
-use Ecotone\Modelling\Attribute\EventSourcingAggregate;
+use Ecotone\Modelling\Attribute\NamedEvent;
 use Ecotone\Modelling\Config\ModellingHandlerModule;
-use Laminas\Service;
-use Prooph\EventStore\Projection\ReadModel;
 use Prooph\EventStore\Projection\ReadModelProjector;
 use Ramsey\Uuid\Uuid;
 
@@ -91,9 +86,9 @@ class EventSourcingModule extends NoExternalConfigurationModule
     {
         $fromClassToNameMapping = [];
         $fromNameToClassMapping = [];
-        foreach ($annotationRegistrationService->findAnnotatedClasses(EventSourcedEvent::class) as $namedEventClass) {
-            /** @var EventSourcedEvent $attribute */
-            $attribute = $annotationRegistrationService->getAttributeForClass($namedEventClass, EventSourcedEvent::class);
+        foreach ($annotationRegistrationService->findAnnotatedClasses(NamedEvent::class) as $namedEventClass) {
+            /** @var NamedEvent $attribute */
+            $attribute = $annotationRegistrationService->getAttributeForClass($namedEventClass, NamedEvent::class);
 
             $fromClassToNameMapping[$namedEventClass]      = $attribute->getName();
             $fromNameToClassMapping[$attribute->getName()] = $namedEventClass;
@@ -237,7 +232,9 @@ class EventSourcingModule extends NoExternalConfigurationModule
 
         foreach ($eventSourcingConfigurations as $eventSourcingConfiguration) {
             foreach ($this->projectionSetupConfigurations as $index => $projectionSetupConfiguration) {
-                if ($eventSourcingConfiguration->getEventStoreReferenceName() === $projectionSetupConfiguration->getEventStoreReferenceName())
+                if ($eventSourcingConfiguration->getEventStoreReferenceName() !== $projectionSetupConfiguration->getEventStoreReferenceName()) {
+                    continue;
+                }
 
                 $generatedChannelName  = Uuid::uuid4()->toString();
                 $projectionRunningConfiguration = ProjectionRunningConfiguration::createEventDriven($projectionSetupConfiguration->getProjectionName());
@@ -309,7 +306,14 @@ class EventSourcingModule extends NoExternalConfigurationModule
             }
         }
 
-        return [EventSourcingRepositoryBuilder::create(EventSourcingConfiguration::createWithDefaults())];
+        $eventSourcingRepositories = [];
+        foreach ($serviceExtensions as $extensionObject) {
+            if ($extensionObject instanceof EventSourcingConfiguration) {
+                $eventSourcingRepositories[] = EventSourcingRepositoryBuilder::create($extensionObject);
+            }
+        }
+
+        return $eventSourcingRepositories ?: [EventSourcingRepositoryBuilder::create(EventSourcingConfiguration::createWithDefaults())];
     }
 
     private function registerEventStore(Configuration $configuration, EventSourcingConfiguration $eventSourcingConfiguration): void
