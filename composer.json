@@ -34,7 +34,7 @@
     }
   },
   "require": {
-    "ecotone/dbal": "1.5.2",
+    "ecotone/dbal": "1.6.0",
     "prooph/pdo-event-store": "^1.13"
   },
   "require-dev": {
