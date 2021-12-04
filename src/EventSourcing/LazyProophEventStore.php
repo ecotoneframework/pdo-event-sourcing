@@ -14,10 +14,10 @@ use Iterator;
 use Prooph\Common\Messaging\MessageConverter;
 use Prooph\Common\Messaging\MessageFactory;
 use Prooph\EventStore\EventStore;
+use Prooph\EventStore\InMemoryEventStore;
 use Prooph\EventStore\Metadata\MetadataMatcher;
 use Prooph\EventStore\Pdo\MariaDbEventStore;
 use Prooph\EventStore\Pdo\MySqlEventStore;
-use Prooph\EventStore\Pdo\PdoEventStore;
 use Prooph\EventStore\Pdo\PersistenceStrategy;
 use Prooph\EventStore\Pdo\PostgresEventStore;
 use Prooph\EventStore\Pdo\WriteLockStrategy\MariaDbMetadataLockStrategy;
@@ -39,6 +39,7 @@ class LazyProophEventStore implements EventStore
     const EVENT_STORE_TYPE_MYSQL = "mysql";
     const EVENT_STORE_TYPE_POSTGRES = "postgres";
     const EVENT_STORE_TYPE_MARIADB = "mariadb";
+    const EVENT_STORE_TYPE_IN_MEMORY = "inMemory";
 
     const SINGLE_STREAM_PERSISTENCE = "single";
     const AGGREGATE_STREAM_PERSISTENCE = "aggregate";
@@ -47,7 +48,7 @@ class LazyProophEventStore implements EventStore
     const AGGREGATE_TYPE = '_aggregate_type';
     const AGGREGATE_ID = '_aggregate_id';
 
-    private ?PdoEventStore $initializedEventStore = null;
+    private ?EventStore $initializedEventStore = null;
     private ReferenceSearchService $referenceSearchService;
     private MessageFactory $messageFactory;
     private MessageConverter $messageConverter;
@@ -136,7 +137,7 @@ class LazyProophEventStore implements EventStore
 
     public function prepareEventStore() : void
     {
-        if (!$this->requireInitialization) {
+        if (!$this->requireInitialization || $this->eventSourcingConfiguration->isInMemory()) {
             return;
         }
 
@@ -159,9 +160,15 @@ class LazyProophEventStore implements EventStore
         $this->requireInitialization = false;
     }
 
-    public function getEventStore() : PdoEventStore
+    public function getEventStore() : EventStore
     {
         if ($this->initializedEventStore) {
+            return $this->initializedEventStore;
+        }
+
+        if ($this->eventSourcingConfiguration->isInMemory()) {
+            $this->initializedEventStore = $this->eventSourcingConfiguration->getInMemoryEventStore();
+
             return $this->initializedEventStore;
         }
 
@@ -231,6 +238,10 @@ class LazyProophEventStore implements EventStore
 
     public function getEventStoreType() : string
     {
+        if ($this->eventSourcingConfiguration->isInMemory()) {
+            return self::EVENT_STORE_TYPE_IN_MEMORY;
+        }
+
         $connection = $this->getWrappedConnection();
 
         $eventStoreType = $connection->getAttribute(\PDO::ATTR_DRIVER_NAME);

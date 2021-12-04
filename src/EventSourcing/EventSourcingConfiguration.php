@@ -5,6 +5,8 @@ namespace Ecotone\EventSourcing;
 
 
 use Enqueue\Dbal\DbalConnectionFactory;
+use Prooph\EventStore\InMemoryEventStore;
+use Prooph\EventStore\Projection\InMemoryProjectionManager;
 
 class EventSourcingConfiguration
 {
@@ -17,6 +19,9 @@ class EventSourcingConfiguration
     private string $projectManagerReferenceName;
     private string $connectionReferenceName;
     private string $persistenceStrategy = LazyProophEventStore::SINGLE_STREAM_PERSISTENCE;
+    private bool $isInMemory = false;
+    private ?InMemoryEventStore $inMemoryEventStore = null;
+    private ?\Prooph\EventStore\Projection\ProjectionManager $inMemoryProjectionManager = null;
 
     private function __construct(string $connectionReferenceName = DbalConnectionFactory::class, string $eventStoreReferenceName = EventStore::class, string $projectManagerReferenceName = ProjectionManager::class)
     {
@@ -35,6 +40,16 @@ class EventSourcingConfiguration
         return new self();
     }
 
+    public static function createInMemory() : static
+    {
+        $eventSourcingConfiguration = new self();
+        $eventSourcingConfiguration->isInMemory = true;
+        $eventSourcingConfiguration->inMemoryEventStore = new InMemoryEventStore();
+        $eventSourcingConfiguration->inMemoryProjectionManager = new CachingInMemoryProjectionManager(new InMemoryProjectionManager($eventSourcingConfiguration->inMemoryEventStore));
+
+        return $eventSourcingConfiguration;
+    }
+
     public function withSingleStreamPersistenceStrategy(): static
     {
         $this->persistenceStrategy = LazyProophEventStore::SINGLE_STREAM_PERSISTENCE;
@@ -47,6 +62,16 @@ class EventSourcingConfiguration
         $this->persistenceStrategy = LazyProophEventStore::AGGREGATE_STREAM_PERSISTENCE;
 
         return $this;
+    }
+
+    public function getInMemoryEventStore(): ?InMemoryEventStore
+    {
+        return $this->inMemoryEventStore;
+    }
+
+    public function getInMemoryProjectionManager(): ?\Prooph\EventStore\Projection\ProjectionManager
+    {
+        return $this->inMemoryProjectionManager;
     }
 
     public function withInitializeEventStoreOnStart(bool $isInitializedOnStartup) : static
@@ -137,5 +162,10 @@ class EventSourcingConfiguration
     public function getConnectionReferenceName(): string
     {
         return $this->connectionReferenceName;
+    }
+
+    public function isInMemory(): bool
+    {
+        return $this->isInMemory;
     }
 }

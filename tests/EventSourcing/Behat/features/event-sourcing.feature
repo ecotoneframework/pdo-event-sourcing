@@ -29,6 +29,19 @@ Feature: activating as aggregate order entity
     Then I should see tickets in progress:
       | ticket_id  | ticket_type    |
 
+  Scenario: I verify building synchronous event driven projection using in memory event store
+    Given I active messaging for namespaces
+      | Test\Ecotone\EventSourcing\Fixture\Ticket                      |
+      | Test\Ecotone\EventSourcing\Fixture\TicketWithSynchronousEventDrivenProjection                      |
+      | Test\Ecotone\EventSourcing\Fixture\InMemoryEventStore                      |
+    When I register "alert" ticket 123 with assignation to "Johny"
+    Then I should see tickets in progress:
+      | ticket_id  | ticket_type    |
+      | 123        | alert          |
+    When I close ticket with id 123
+    Then I should see tickets in progress:
+      | ticket_id  | ticket_type    |
+
   Scenario: I verify building asynchronous event driven projection
     Given I active messaging for namespaces
       | Test\Ecotone\EventSourcing\Fixture\Ticket                      |

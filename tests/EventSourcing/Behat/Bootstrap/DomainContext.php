@@ -227,6 +227,7 @@ class DomainContext extends TestCase implements Context
                     break;
                 }
                 case "Test\Ecotone\EventSourcing\Fixture\TicketWithLimitedLoad": {break;}
+                case "Test\Ecotone\EventSourcing\Fixture\InMemoryEventStore": {break;}
                 default:
                 {
                     throw new InvalidArgumentException("Namespace {$namespace} not yet implemented");
