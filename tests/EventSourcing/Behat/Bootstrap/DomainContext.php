@@ -179,7 +179,7 @@ class DomainContext extends TestCase implements Context
 
     private function prepareMessaging(array $namespaces): void
     {
-        $managerRegistryConnectionFactory = new DbalConnectionFactory(["dsn" => 'pgsql://ecotone:secret@database:5432/ecotone']);
+        $managerRegistryConnectionFactory = new DbalConnectionFactory(["dsn" => getenv("DATABASE_DSN") ? getenv("DATABASE_DSN") : null]);
         self::$connection                 = $managerRegistryConnectionFactory->createContext()->getDbalConnection();
 
         $objects = [];
