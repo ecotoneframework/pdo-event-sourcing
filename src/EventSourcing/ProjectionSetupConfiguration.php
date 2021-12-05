@@ -11,7 +11,7 @@ use Prooph\EventStore\Pdo\Projection\PdoEventStoreReadModelProjector;
 use Prooph\EventStore\Projection\ReadModel;
 use Prooph\EventStore\Projection\ReadModelProjector;
 
-class ProjectionSetupConfiguration
+final class ProjectionSetupConfiguration
 {
     /** @var ProjectionEventHandlerConfiguration[] */
     private array $projectionEventHandlers = [];

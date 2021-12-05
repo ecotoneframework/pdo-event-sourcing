@@ -52,7 +52,7 @@ jobs:
       run: vendor/bin/phpunit
 
     - name: Test Behat
-      run: vendor/bin/behat
+      run: vendor/bin/behat --stop-on-failure
 
     - name: Test PHPStan
       run: vendor/bin/phpstan

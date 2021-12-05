@@ -95,11 +95,6 @@ class EcotoneEventStoreProophWrapper implements EventStore
         return $this->getWrappedEventStore()->getEventStore();
     }
 
-    public function getWrappedConnection() : PDOConnection
-    {
-        return $this->getWrappedEventStore()->getWrappedConnection();
-    }
-
     public function appendTo(string $streamName, array $streamEvents): void
     {
         $this->eventStore->appendTo(new StreamName($streamName), $this->convertProophEvents($streamEvents));

@@ -26,7 +26,7 @@ use Prooph\EventStore\Pdo\WriteLockStrategy\MysqlMetadataLockStrategy;
 use Prooph\EventStore\Pdo\WriteLockStrategy\NoLockStrategy;
 use Prooph\EventStore\Pdo\WriteLockStrategy\PostgresAdvisoryLockStrategy;
 
-class EventSourcingRepositoryBuilder implements RepositoryBuilder
+final class EventSourcingRepositoryBuilder implements RepositoryBuilder
 {
     private array $handledAggregateClassNames = [];
     private array $headerMapper = [];

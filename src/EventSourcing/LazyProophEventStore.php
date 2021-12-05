@@ -261,6 +261,7 @@ class LazyProophEventStore implements EventStore
         return $connectionFactory->getConnection();
     }
 
+    /** @phpstan-ignore-next-line */
     public function getWrappedConnection(): PDOConnection|\PDO
     {
         $connection = $this->getConnection()->getWrappedConnection();
@@ -269,7 +270,7 @@ class LazyProophEventStore implements EventStore
             $reflectionClass = new \ReflectionClass($connection);
             $pdoConnection = $reflectionClass->getProperty("connection");
             $pdoConnection->setAccessible(true);
-            
+
             return $pdoConnection->getValue($connection);
         }
 
