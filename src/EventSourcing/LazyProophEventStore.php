@@ -261,9 +261,19 @@ class LazyProophEventStore implements EventStore
         return $connectionFactory->getConnection();
     }
 
-    public function getWrappedConnection(): PDOConnection
+    public function getWrappedConnection(): PDOConnection|\PDO
     {
-        return $this->getConnection()->getWrappedConnection();
+        $connection = $this->getConnection()->getWrappedConnection();
+
+        if ($this->isDbalVersionThreeOrHigher($connection)) {
+            $reflectionClass = new \ReflectionClass($connection);
+            $pdoConnection = $reflectionClass->getProperty("connection");
+            $pdoConnection->setAccessible(true);
+            
+            return $pdoConnection->getValue($connection);
+        }
+
+        return $connection;
     }
 
     private function createMysqlEventStreamTable() : void
@@ -366,5 +376,14 @@ CREATE TABLE projections (
 );
 SQL
         );
+    }
+
+    /**
+     * @param \Doctrine\DBAL\Driver\Connection|null $connection
+     * @return bool
+     */
+    private function isDbalVersionThreeOrHigher(?\Doctrine\DBAL\Driver\Connection $connection): bool
+    {
+        return $connection instanceof \Doctrine\DBAL\Driver\PDO\Connection;
     }
 }
