@@ -269,12 +269,15 @@ class LazyProophEventStore implements EventStore
 
         if ($this->isDbalVersionThreeOrHigher($connection)) {
             $reflectionClass = new \ReflectionClass($connection);
-            foreach (DbalReconnectableConnectionFactory::CONNECTION_PROPERTIES as $connectionPropertyName) {
-                if ($reflectionClass->hasProperty($connectionPropertyName)) {
-                    $pdoConnection = $reflectionClass->getProperty($connectionPropertyName);
-                    $pdoConnection->setAccessible(true);
 
-                    return $pdoConnection->getValue($connection);
+            foreach ($reflectionClass->getProperties() as $property) {
+                foreach (DbalReconnectableConnectionFactory::CONNECTION_PROPERTIES as $connectionPropertyName) {
+                    if ($property->getName() === $connectionPropertyName) {
+                        $pdoConnection = $reflectionClass->getProperty($connectionPropertyName);
+                        $pdoConnection->setAccessible(true);
+
+                        return $pdoConnection->getValue($connection);
+                    }
                 }
             }
             Assert::isTrue(false, "Did not found connection property in " . $reflectionClass->getName());
