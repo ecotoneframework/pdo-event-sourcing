@@ -8,6 +8,7 @@ use Doctrine\DBAL\Driver\PDOConnection;
 use Ecotone\Dbal\DbalReconnectableConnectionFactory;
 use Ecotone\Messaging\Handler\InMemoryReferenceSearchService;
 use Ecotone\Messaging\Handler\ReferenceSearchService;
+use Ecotone\Messaging\Support\Assert;
 use Ecotone\Messaging\Support\InvalidArgumentException;
 use Enqueue\Dbal\DbalConnectionFactory;
 use Iterator;
@@ -268,10 +269,15 @@ class LazyProophEventStore implements EventStore
 
         if ($this->isDbalVersionThreeOrHigher($connection)) {
             $reflectionClass = new \ReflectionClass($connection);
-            $pdoConnection = $reflectionClass->getProperty("connection");
-            $pdoConnection->setAccessible(true);
+            foreach (DbalReconnectableConnectionFactory::CONNECTION_PROPERTIES as $connectionPropertyName) {
+                if ($reflectionClass->hasProperty($connectionPropertyName)) {
+                    $pdoConnection = $reflectionClass->getProperty($connectionPropertyName);
+                    $pdoConnection->setAccessible(true);
 
-            return $pdoConnection->getValue($connection);
+                    return $pdoConnection->getValue($connection);
+                }
+            }
+            Assert::isTrue(false, "Did not found connection property in " . $reflectionClass->getName());
         }
 
         return $connection;
