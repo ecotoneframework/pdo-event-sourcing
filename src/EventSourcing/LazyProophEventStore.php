@@ -267,6 +267,10 @@ class LazyProophEventStore implements EventStore
     {
         $connection = $this->getConnection()->getWrappedConnection();
 
+        if ($connection instanceof PDOConnection || $connection instanceof \PDO) {
+            return $connection
+        }
+
         if ($this->isDbalVersionThreeOrHigher($connection)) {
             $reflectionClass = new \ReflectionClass($connection);
 
