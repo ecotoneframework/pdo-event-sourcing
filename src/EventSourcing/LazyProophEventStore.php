@@ -267,8 +267,8 @@ class LazyProophEventStore implements EventStore
     {
         $connection = $this->getConnection()->getWrappedConnection();
 
-        if ($connection instanceof PDOConnection || $connection instanceof \PDO) {
-            return $connection
+        if ($connection instanceof \PDO || is_subclass_of($connection, "Doctrine\DBAL\Driver\PDOConnection") || get_class($connection) === "Doctrine\DBAL\Driver\PDOConnection") {
+            return $connection;
         }
 
         if ($this->isDbalVersionThreeOrHigher($connection)) {
