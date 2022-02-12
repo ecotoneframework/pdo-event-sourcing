@@ -69,19 +69,21 @@ class LazyProophProjectionManager implements ProjectionManager
     public function deleteProjection(string $name, bool $deleteEmittedEvents): void
     {
         $this->getProjectionManager()->deleteProjection($name, $deleteEmittedEvents);
-
-        /** @var MessagingEntrypoint $messagingEntrypoint */
-        $messagingEntrypoint = $this->referenceSearchService->get(MessagingEntrypoint::class);
-        $messagingEntrypoint->send([], $this->projectionSetupConfigurations[$name]->getTriggeringChannelName());
+        $this->triggerActionOnProjection($name);
     }
 
     public function resetProjection(string $name): void
     {
         $this->getProjectionManager()->resetProjection($name);
+        $this->triggerActionOnProjection($name);
+    }
 
+    public function initializeProjection(string $name): void
+    {
         /** @var MessagingEntrypoint $messagingEntrypoint */
         $messagingEntrypoint = $this->referenceSearchService->get(MessagingEntrypoint::class);
-        $messagingEntrypoint->send([], $this->projectionSetupConfigurations[$name]->getTriggeringChannelName());
+        $messagingEntrypoint->send([], $this->projectionSetupConfigurations[$name]->getInitializationChannelName());
+        $this->triggerActionOnProjection($name);
     }
 
     public function stopProjection(string $name): void
@@ -89,8 +91,7 @@ class LazyProophProjectionManager implements ProjectionManager
         $this->getProjectionManager()->stopProjection($name);
 
         /** @var MessagingEntrypoint $messagingEntrypoint */
-        $messagingEntrypoint = $this->referenceSearchService->get(MessagingEntrypoint::class);
-        $messagingEntrypoint->send([], $this->projectionSetupConfigurations[$name]->getTriggeringChannelName());
+        $this->triggerActionOnProjection($name);
     }
 
     public function fetchProjectionNames(?string $filter, int $limit = 20, int $offset = 0): array
@@ -121,5 +122,12 @@ class LazyProophProjectionManager implements ProjectionManager
     private function getLazyProophEventStore(): LazyProophEventStore
     {
         return new LazyProophEventStore($this->eventSourcingConfiguration, $this->referenceSearchService);
+    }
+
+    private function triggerActionOnProjection(string $name): void
+    {
+        /** @var MessagingEntrypoint $messagingEntrypoint */
+        $messagingEntrypoint = $this->referenceSearchService->get(MessagingEntrypoint::class);
+        $messagingEntrypoint->send([], $this->projectionSetupConfigurations[$name]->getTriggeringChannelName());
     }
 }

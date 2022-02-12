@@ -2,11 +2,13 @@
 
 namespace Test\Ecotone\EventSourcing\Behat\Bootstrap;
 
+use Behat\Behat\Tester\Exception\PendingException;
 use Behat\Behat\Context\Context;
 use Behat\Gherkin\Node\TableNode;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception\TableNotFoundException;
 use Ecotone\EventSourcing\Config\EventSourcingModule;
+use Ecotone\EventSourcing\ProjectionManager;
 use Ecotone\Lite\EcotoneLiteConfiguration;
 use Ecotone\Lite\InMemoryPSRContainer;
 use Ecotone\Messaging\Config\ConfiguredMessagingSystem;
@@ -33,6 +35,7 @@ class DomainContext extends TestCase implements Context
 {
     private static ConfiguredMessagingSystem $messagingSystem;
     private static ?Connection $connection = null;
+    private static ProjectionManager $projectionManager;
 
     /**
      * @Given I active messaging for namespace :namespace
@@ -255,6 +258,7 @@ class DomainContext extends TestCase implements Context
         );
 
         self::$connection->beginTransaction();
+        self::$projectionManager = self::$messagingSystem->getGatewayByName(ProjectionManager::class);
     }
 
     /**
@@ -274,5 +278,13 @@ class DomainContext extends TestCase implements Context
             $result,
             $this->getQueryBus()->sendWithRouting($queryName)
         );
+    }
+
+    /**
+     * @Given I initialize projection :name
+     */
+    public function iInitializeProjection(string $name)
+    {
+        self::$projectionManager->initializeProjection($name);
     }
 }

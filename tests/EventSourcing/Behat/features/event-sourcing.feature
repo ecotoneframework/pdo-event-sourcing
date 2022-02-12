@@ -1,26 +1,12 @@
 Feature: activating as aggregate order entity
 
-  Scenario: I verify building polling projection
-    Given I active messaging for namespaces
-        | Test\Ecotone\EventSourcing\Fixture\Ticket                      |
-        | Test\Ecotone\EventSourcing\Fixture\TicketWithPollingProjection |
-    When I register "alert" ticket 123 with assignation to "Johny"
-    When I run endpoint with name "inProgressTicketList"
-    Then I should see tickets in progress:
-      | ticket_id  | ticket_type    |
-      | 123        | alert          |
-    When I close ticket with id 123
-    Then I should see tickets in progress:
-      | ticket_id  | ticket_type    |
-      | 123        | alert          |
-    And I run endpoint with name "inProgressTicketList"
-    Then I should see tickets in progress:
-      | ticket_id  | ticket_type    |
-
   Scenario: I verify building synchronous event driven projection
     Given I active messaging for namespaces
       | Test\Ecotone\EventSourcing\Fixture\Ticket                      |
       | Test\Ecotone\EventSourcing\Fixture\TicketWithSynchronousEventDrivenProjection                      |
+    And I initialize projection "inProgressTicketList"
+    And I should see tickets in progress:
+      | ticket_id  | ticket_type    |
     When I register "alert" ticket 123 with assignation to "Johny"
     Then I should see tickets in progress:
       | ticket_id  | ticket_type    |
@@ -39,6 +25,23 @@ Feature: activating as aggregate order entity
       | ticket_id  | ticket_type    |
       | 123        | alert          |
     When I close ticket with id 123
+    Then I should see tickets in progress:
+      | ticket_id  | ticket_type    |
+
+  Scenario: I verify building polling projection
+    Given I active messaging for namespaces
+        | Test\Ecotone\EventSourcing\Fixture\Ticket                      |
+        | Test\Ecotone\EventSourcing\Fixture\TicketWithPollingProjection |
+    When I register "alert" ticket 123 with assignation to "Johny"
+    When I run endpoint with name "inProgressTicketList"
+    Then I should see tickets in progress:
+      | ticket_id  | ticket_type    |
+      | 123        | alert          |
+    When I close ticket with id 123
+    Then I should see tickets in progress:
+      | ticket_id  | ticket_type    |
+      | 123        | alert          |
+    And I run endpoint with name "inProgressTicketList"
     Then I should see tickets in progress:
       | ticket_id  | ticket_type    |
 

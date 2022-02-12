@@ -41,6 +41,11 @@ interface ProjectionManager
     public function stopProjection(string $name): void;
 
     /**
+     * @throws ProjectionNotFound
+     */
+    public function initializeProjection(string $name): void;
+
+    /**
      * @return string[]
      */
     public function fetchProjectionNames(?string $filter, int $limit = 20, int $offset = 0): array;

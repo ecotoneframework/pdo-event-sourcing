@@ -128,15 +128,24 @@ final class ProjectionSetupConfiguration
         return $this->projectionOptions;
     }
 
+    /**
+     * If projection is running in asynchronous mode, this channel allows to send
+     * a message to trigger it to perform specific action
+     */
     public function getTriggeringChannelName() : string
     {
         if ($this->getProjectionEventHandlers()) {
-            /** @var ProjectionSetupConfiguration $first */
+            /** @var ProjectionEventHandlerConfiguration $first */
             $first = reset($this->projectionEventHandlers);
 
             return $first->getTriggeringChannelName();
         }
 
         return NullableMessageChannel::CHANNEL_NAME;
+    }
+
+    public function getInitializationChannelName() : string
+    {
+        return $this->projectionLifeCycleConfiguration->getInitializationRequestChannel() ?? NullableMessageChannel::CHANNEL_NAME;
     }
 }
