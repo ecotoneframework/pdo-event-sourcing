@@ -89,6 +89,7 @@ class EventSourcingRepository implements EventSourcedRepository
                 array_merge(
                     $this->headerMapper->mapFromMessageHeaders($metadata),
                     [
+                        MessageHeaders::MESSAGE_ID => Uuid::uuid4()->toString(),
                         LazyProophEventStore::AGGREGATE_ID => $aggregateId,
                         LazyProophEventStore::AGGREGATE_TYPE => $aggregateClassName,
                         LazyProophEventStore::AGGREGATE_VERSION => $versionBeforeHandling + $eventNumber
