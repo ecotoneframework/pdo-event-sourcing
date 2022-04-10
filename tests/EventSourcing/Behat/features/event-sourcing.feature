@@ -197,3 +197,9 @@ Feature: activating as aggregate order entity
     When I create basket with id 1000
     And I create basket with id 1001
     Then the result of calling "action_collector.getCount" should be 2
+
+  Scenario: Handle event and commands with Value Object Identifiers
+    Given I active messaging for namespaces
+      | Test\Ecotone\EventSourcing\Fixture\ValueObjectIdentifier                      |
+    When I publish article with id "fc6023e7-1d48-4f59-abc9-72a087787d3e" and content "Good book"
+    Then I article with id "fc6023e7-1d48-4f59-abc9-72a087787d3e" should contains "Good book"

@@ -30,6 +30,8 @@ use Test\Ecotone\EventSourcing\Fixture\Ticket\Command\CloseTicket;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Command\RegisterTicket;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\TicketEventConverter;
 use Test\Ecotone\EventSourcing\Fixture\TicketWithPollingProjection\InProgressTicketList;
+use Test\Ecotone\EventSourcing\Fixture\ValueObjectIdentifier\ArticleEventConverter;
+use Test\Ecotone\EventSourcing\Fixture\ValueObjectIdentifier\PublishArticle;
 
 class DomainContext extends TestCase implements Context
 {
@@ -231,6 +233,10 @@ class DomainContext extends TestCase implements Context
                 }
                 case "Test\Ecotone\EventSourcing\Fixture\TicketWithLimitedLoad": {break;}
                 case "Test\Ecotone\EventSourcing\Fixture\InMemoryEventStore": {break;}
+                case "Test\Ecotone\EventSourcing\Fixture\ValueObjectIdentifier": {
+                    $objects = array_merge($objects, [new ArticleEventConverter()]);
+                    break;
+                }
                 default:
                 {
                     throw new InvalidArgumentException("Namespace {$namespace} not yet implemented");
@@ -286,5 +292,24 @@ class DomainContext extends TestCase implements Context
     public function iInitializeProjection(string $name)
     {
         self::$projectionManager->initializeProjection($name);
+    }
+
+    /**
+     * @When I publish article with id :id and content :content
+     */
+    public function iPublishArticleWithIdAndContent(string $id, string $content)
+    {
+        $this->getCommandBus()->send(new PublishArticle(Uuid::fromString($id), $content));
+    }
+
+    /**
+     * @Then I article with id :id should contains :content
+     */
+    public function iArticleWithIdShouldContains(string $id, string $content)
+    {
+        $this->assertEquals(
+            $content,
+            $this->getQueryBus()->sendWithRouting("article.getContent", metadata: ["aggregate.id" => Uuid::fromString($id)])
+        );
     }
 }
