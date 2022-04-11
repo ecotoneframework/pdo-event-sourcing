@@ -6,6 +6,7 @@ use DateTimeImmutable;
 use DateTimeZone;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Driver\PDOConnection;
+use Ecotone\Enqueue\OutboundMessageConverter;
 use Ecotone\EventSourcing\StreamConfiguration\SingleStreamConfiguration;
 use Ecotone\Messaging\Conversion\ConversionService;
 use Ecotone\Messaging\Conversion\MediaType;
@@ -79,6 +80,7 @@ class EventSourcingRepository implements EventSourcedRepository
     {
         $aggregateId = reset($identifiers);
         $streamName = $this->getStreamName($aggregateClassName, $aggregateId);
+        $metadata = OutboundMessageConverter::unsetEnqueueMetadata($metadata);
 
         $eventsWithMetadata = [];
         $eventsCount = count($events);
