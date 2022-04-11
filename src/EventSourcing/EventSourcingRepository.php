@@ -14,6 +14,7 @@ use Ecotone\Messaging\Handler\ClassDefinition;
 use Ecotone\Messaging\Handler\TypeDescriptor;
 use Ecotone\Messaging\MessageConverter\HeaderMapper;
 use Ecotone\Messaging\MessageHeaders;
+use Ecotone\Modelling\DistributedMetadata;
 use Ecotone\Modelling\Event;
 use Ecotone\Modelling\EventSourcedRepository;
 use Ecotone\Modelling\EventStream;
@@ -81,6 +82,7 @@ class EventSourcingRepository implements EventSourcedRepository
         $aggregateId = reset($identifiers);
         $streamName = $this->getStreamName($aggregateClassName, $aggregateId);
         $metadata = OutboundMessageConverter::unsetEnqueueMetadata($metadata);
+        $metadata = DistributedMetadata::unsetDistributionKeys($metadata);
 
         $eventsWithMetadata = [];
         $eventsCount = count($events);
