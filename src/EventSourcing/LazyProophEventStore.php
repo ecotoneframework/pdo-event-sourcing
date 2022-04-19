@@ -44,6 +44,7 @@ class LazyProophEventStore implements EventStore
 
     const SINGLE_STREAM_PERSISTENCE = "single";
     const AGGREGATE_STREAM_PERSISTENCE = "aggregate";
+    const CUSTOM_STREAM_PERSISTENCE = "custom";
 
     const AGGREGATE_VERSION = '_aggregate_version';
     const AGGREGATE_TYPE = '_aggregate_type';
@@ -217,7 +218,8 @@ class LazyProophEventStore implements EventStore
     {
         return match ($this->eventSourcingConfiguration->getPersistenceStrategy()) {
             self::AGGREGATE_STREAM_PERSISTENCE => new PersistenceStrategy\MySqlAggregateStreamStrategy($this->messageConverter),
-            self::SINGLE_STREAM_PERSISTENCE => new PersistenceStrategy\MySqlSingleStreamStrategy($this->messageConverter)
+            self::SINGLE_STREAM_PERSISTENCE => new PersistenceStrategy\MySqlSingleStreamStrategy($this->messageConverter),
+            self::CUSTOM_STREAM_PERSISTENCE => $this->eventSourcingConfiguration->getCustomPersistenceStrategy(),
         };
     }
 
@@ -225,7 +227,8 @@ class LazyProophEventStore implements EventStore
     {
         return match ($this->eventSourcingConfiguration->getPersistenceStrategy()) {
             self::AGGREGATE_STREAM_PERSISTENCE => new PersistenceStrategy\MariaDbAggregateStreamStrategy($this->messageConverter),
-            self::SINGLE_STREAM_PERSISTENCE => new PersistenceStrategy\MariaDbSingleStreamStrategy($this->messageConverter)
+            self::SINGLE_STREAM_PERSISTENCE => new PersistenceStrategy\MariaDbSingleStreamStrategy($this->messageConverter),
+            self::CUSTOM_STREAM_PERSISTENCE => $this->eventSourcingConfiguration->getCustomPersistenceStrategy(),
         };
     }
 
@@ -233,7 +236,8 @@ class LazyProophEventStore implements EventStore
     {
         return match ($this->eventSourcingConfiguration->getPersistenceStrategy()) {
             self::AGGREGATE_STREAM_PERSISTENCE => new PersistenceStrategy\PostgresAggregateStreamStrategy($this->messageConverter),
-            self::SINGLE_STREAM_PERSISTENCE => new PersistenceStrategy\PostgresSingleStreamStrategy($this->messageConverter)
+            self::SINGLE_STREAM_PERSISTENCE => new PersistenceStrategy\PostgresSingleStreamStrategy($this->messageConverter),
+            self::CUSTOM_STREAM_PERSISTENCE => $this->eventSourcingConfiguration->getCustomPersistenceStrategy(),
         };
     }
 

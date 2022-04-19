@@ -6,6 +6,7 @@ namespace Ecotone\EventSourcing;
 
 use Enqueue\Dbal\DbalConnectionFactory;
 use Prooph\EventStore\InMemoryEventStore;
+use Prooph\EventStore\Pdo\PersistenceStrategy;
 use Prooph\EventStore\Projection\InMemoryProjectionManager;
 
 class EventSourcingConfiguration
@@ -19,6 +20,7 @@ class EventSourcingConfiguration
     private string $projectManagerReferenceName;
     private string $connectionReferenceName;
     private string $persistenceStrategy = LazyProophEventStore::SINGLE_STREAM_PERSISTENCE;
+    private ?PersistenceStrategy $customPersistenceStrategyInstance = null;
     private bool $isInMemory = false;
     private ?InMemoryEventStore $inMemoryEventStore = null;
     private ?\Prooph\EventStore\Projection\ProjectionManager $inMemoryProjectionManager = null;
@@ -63,6 +65,15 @@ class EventSourcingConfiguration
 
         return $this;
     }
+
+    public function withCustomPersistenceStrategy(PersistenceStrategy $persistenceStrategy): static
+    {
+        $this->persistenceStrategy = LazyProophEventStore::CUSTOM_STREAM_PERSISTENCE;
+        $this->customPersistenceStrategyInstance = $persistenceStrategy;
+
+        return $this;
+    }
+
 
     public function getInMemoryEventStore(): ?InMemoryEventStore
     {
@@ -127,6 +138,11 @@ class EventSourcingConfiguration
     public function getPersistenceStrategy(): string
     {
         return $this->persistenceStrategy;
+    }
+
+    public function getCustomPersistenceStrategy(): PersistenceStrategy
+    {
+        return $this->customPersistenceStrategyInstance;
     }
 
     public function getLoadBatchSize(): int

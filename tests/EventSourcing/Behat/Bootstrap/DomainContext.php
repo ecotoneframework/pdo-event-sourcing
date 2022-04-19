@@ -23,6 +23,7 @@ use Test\Ecotone\EventSourcing\Fixture\Basket\BasketEventConverter;
 use Test\Ecotone\EventSourcing\Fixture\Basket\Command\AddProduct;
 use Test\Ecotone\EventSourcing\Fixture\Basket\Command\CreateBasket;
 use Test\Ecotone\EventSourcing\Fixture\BasketListProjection\BasketList;
+use Test\Ecotone\EventSourcing\Fixture\CustomEventStream\CustomEventStreamProjection;
 use Test\Ecotone\EventSourcing\Fixture\ProjectionFromCategoryUsingAggregatePerStream\FromCategoryUsingAggregatePerStreamProjection;
 use Test\Ecotone\EventSourcing\Fixture\ProjectionFromMultipleStreams\MultipleStreamsProjection;
 use Test\Ecotone\EventSourcing\Fixture\SpecificEventStream\SpecificEventStreamProjection;
@@ -208,6 +209,11 @@ class DomainContext extends TestCase implements Context
                 case "Test\Ecotone\EventSourcing\Fixture\SpecificEventStream":
                 {
                     $objects = array_merge($objects, [new SpecificEventStreamProjection()]);
+                    break;
+                }
+                case "Test\Ecotone\EventSourcing\Fixture\CustomEventStream":
+                {
+                    $objects = array_merge($objects, [new CustomEventStreamProjection()]);
                     break;
                 }
                 case "Test\Ecotone\EventSourcing\Fixture\ProjectionFromCategoryUsingAggregatePerStream":

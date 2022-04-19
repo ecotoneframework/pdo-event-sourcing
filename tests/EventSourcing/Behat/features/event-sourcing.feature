@@ -189,6 +189,15 @@ Feature: activating as aggregate order entity
     And I create basket with id 1001
     Then the result of calling "action_collector.getCount" should be 1
 
+  Scenario: Verify handling custom event stream when custom stream persistence is enabled
+    Given I active messaging for namespaces
+      | Test\Ecotone\EventSourcing\Fixture\CustomEventStream                      |
+      | Test\Ecotone\EventSourcing\Fixture\Basket                      |
+      | Test\Ecotone\EventSourcing\Fixture\Ticket                      |
+    When I create basket with id 2000
+    And I create basket with id 2001
+    Then the result of calling "action_collector.getCount" should be 2
+
   Scenario: Verify handling specific event stream when aggregate bases stream persistence is enabled
     Given I active messaging for namespaces
       | Test\Ecotone\EventSourcing\Fixture\ProjectionFromCategoryUsingAggregatePerStream                      |
