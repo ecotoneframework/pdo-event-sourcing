@@ -36,6 +36,7 @@ use Ecotone\Messaging\Handler\Gateway\GatewayProxyBuilder;
 use Ecotone\Messaging\Handler\Gateway\ParameterToMessageConverter\GatewayHeaderBuilder;
 use Ecotone\Messaging\Handler\Gateway\ParameterToMessageConverter\GatewayPayloadBuilder;
 use Ecotone\Messaging\Handler\InterfaceToCall;
+use Ecotone\Messaging\Handler\InterfaceToCallRegistry;
 use Ecotone\Messaging\Handler\Processor\MethodInvoker\Converter\HeaderBuilder;
 use Ecotone\Messaging\Handler\Processor\MethodInvoker\Converter\PayloadBuilder;
 use Ecotone\Messaging\Handler\Processor\MethodInvoker\MethodInterceptor;
@@ -83,7 +84,7 @@ class EventSourcingModule extends NoExternalConfigurationModule
         $this->requiredReferences                   = $requiredReferences;
     }
 
-    public static function create(AnnotationFinder $annotationRegistrationService): static
+    public static function create(AnnotationFinder $annotationRegistrationService, InterfaceToCallRegistry $interfaceToCallRegistry): static
     {
         $fromClassToNameMapping = [];
         $fromNameToClassMapping = [];
@@ -197,9 +198,9 @@ class EventSourcingModule extends NoExternalConfigurationModule
             $projectionConfiguration = $projectionSetupConfigurations[$projectionAttribute->getName()];
 
             $eventHandlerChannelName = ModellingHandlerModule::getHandlerChannel($projectionEventHandler);
-            $synchronousEventHandlerRequestChannel = AsynchronousModule::create($annotationRegistrationService)->getSynchronousChannelFor($eventHandlerChannelName, $handlerAttribute->getEndpointId());
+            $synchronousEventHandlerRequestChannel = AsynchronousModule::create($annotationRegistrationService, $interfaceToCallRegistry)->getSynchronousChannelFor($eventHandlerChannelName, $handlerAttribute->getEndpointId());
             $projectionSetupConfigurations[$projectionAttribute->getName()] = $projectionConfiguration->withProjectionEventHandler(
-                ModellingHandlerModule::getNamedMessageChannelForEventHandler($projectionEventHandler),
+                ModellingHandlerModule::getNamedMessageChannelForEventHandler($projectionEventHandler, $interfaceToCallRegistry),
                 $projectionEventHandler->getClassName(),
                 $projectionEventHandler->getMethodName(),
                 $synchronousEventHandlerRequestChannel,
@@ -210,7 +211,7 @@ class EventSourcingModule extends NoExternalConfigurationModule
         return new self($projectionSetupConfigurations, $projectionLifeCyclesServiceActivators, EventMapper::createWith($fromClassToNameMapping, $fromNameToClassMapping), AggregateStreamMapping::createWith($aggregateToStreamMapping), $relatedInterfaces, array_unique($requiredReferences));
     }
 
-    public function prepare(Configuration $configuration, array $extensionObjects, ModuleReferenceSearchService $moduleReferenceSearchService): void
+    public function prepare(Configuration $configuration, array $extensionObjects, ModuleReferenceSearchService $moduleReferenceSearchService, InterfaceToCallRegistry $interfaceToCallRegistry): void
     {
         $moduleReferenceSearchService->store(EventMapper::class, $this->eventMapper);
         $moduleReferenceSearchService->store(AggregateStreamMapping::class, $this->aggregateToStreamMapping);
