@@ -123,7 +123,7 @@ class EventSourcingModule extends NoExternalConfigurationModule
             $projectionDelete         = TypeDescriptor::create(ProjectionDelete::class);
             $projectionReset          = TypeDescriptor::create(ProjectionReset::class);
             foreach ($classDefinition->getPublicMethodNames() as $publicMethodName) {
-                $relatedInterfaces[] = InterfaceToCall::create($projectionClassName, $publicMethodName);
+                $relatedInterfaces[] = $interfaceToCallRegistry->getFor($projectionClassName, $publicMethodName);
                 foreach ($annotationRegistrationService->getAnnotationsForMethod($projectionClassName, $publicMethodName) as $attribute) {
                     $attributeType = TypeDescriptor::createFromVariable($attribute);
                     if ($attributeType->equals($projectionInitialization)) {
@@ -259,14 +259,14 @@ class EventSourcingModule extends NoExternalConfigurationModule
                 foreach ($projectionSetupConfiguration->getProjectionEventHandlers() as $projectionEventHandler) {
                     $configuration->registerBeforeSendInterceptor(MethodInterceptor::create(
                         Uuid::uuid4()->toString(),
-                        InterfaceToCall::create(ProjectionFlowController::class, "preSend"),
+                        $interfaceToCallRegistry->getFor(ProjectionFlowController::class, "preSend"),
                         ServiceActivatorBuilder::createWithDirectReference(new ProjectionFlowController($projectionRunningConfiguration->isPolling()), "preSend"),
                         Precedence::SYSTEM_PRECEDENCE_BEFORE,
                         $projectionEventHandler->getClassName() . "::" . $projectionEventHandler->getMethodName()
                     ));
                     $configuration->registerBeforeMethodInterceptor(MethodInterceptor::create(
                         Uuid::uuid4()->toString(),
-                        InterfaceToCall::create(ProjectionExecutor::class, "beforeEventHandler"),
+                        $interfaceToCallRegistry->getFor(ProjectionExecutor::class, "beforeEventHandler"),
                         new ProjectionExecutorBuilder($eventSourcingConfiguration, $projectionSetupConfiguration, $this->projectionSetupConfigurations, $projectionRunningConfiguration, "beforeEventHandler"),
                         Precedence::SYSTEM_PRECEDENCE_BEFORE,
                         $projectionEventHandler->getClassName() . "::" . $projectionEventHandler->getMethodName()
