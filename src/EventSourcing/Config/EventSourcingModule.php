@@ -219,77 +219,67 @@ class EventSourcingModule extends NoExternalConfigurationModule
         $configuration->requireReferences($this->requiredReferences);
 
         $projectionRunningConfigurations = [];
-        $eventSourcingConfigurations = [];
+        $eventSourcingConfiguration = EventSourcingConfiguration::createWithDefaults();
         foreach ($extensionObjects as $extensionObject) {
             if ($extensionObject instanceof EventSourcingConfiguration) {
-                $eventSourcingConfigurations[] = $extensionObject;
+                $eventSourcingConfiguration = $extensionObject;
             }else if ($extensionObject instanceof ProjectionRunningConfiguration) {
                 $projectionRunningConfigurations[$extensionObject->getProjectionName()] = $extensionObject;
             }
         }
 
-        if (!$eventSourcingConfigurations) {
-            $eventSourcingConfigurations[] = EventSourcingConfiguration::createWithDefaults();
-        }
-
-        foreach ($eventSourcingConfigurations as $eventSourcingConfiguration) {
-            foreach ($this->projectionSetupConfigurations as $index => $projectionSetupConfiguration) {
-                if ($eventSourcingConfiguration->getEventStoreReferenceName() !== $projectionSetupConfiguration->getEventStoreReferenceName()) {
-                    continue;
-                }
-
-                $generatedChannelName  = Uuid::uuid4()->toString();
-                $projectionRunningConfiguration = ProjectionRunningConfiguration::createEventDriven($projectionSetupConfiguration->getProjectionName());
-                if (array_key_exists($projectionSetupConfiguration->getProjectionName(), $projectionRunningConfigurations)) {
-                    $projectionRunningConfiguration = $projectionRunningConfigurations[$projectionSetupConfiguration->getProjectionName()];
-                }
-                $projectionSetupConfiguration = $projectionSetupConfiguration
-                                        ->withOptions([
-                                            ReadModelProjector::OPTION_CACHE_SIZE => $projectionRunningConfiguration->getAmountOfCachedStreamNames(),
-                                            ReadModelProjector::OPTION_SLEEP => $projectionRunningConfiguration->getWaitBeforeCallingESWhenNoEventsFound(),
-                                            ReadModelProjector::OPTION_PERSIST_BLOCK_SIZE => $projectionRunningConfiguration->getPersistChangesAfterAmountOfOperations(),
-                                            ReadModelProjector::OPTION_LOCK_TIMEOUT_MS => $projectionRunningConfiguration->getProjectionLockTimeout(),
-                                            ReadModelProjector::DEFAULT_UPDATE_LOCK_THRESHOLD => $projectionRunningConfiguration->getUpdateLockTimeoutAfter()
-                                        ]);
-
-                $projectionExecutorBuilder = new ProjectionExecutorBuilder($eventSourcingConfiguration, $projectionSetupConfiguration, $this->projectionSetupConfigurations, $projectionRunningConfiguration, "execute");
-                $projectionExecutorBuilder = $projectionExecutorBuilder->withInputChannelName($generatedChannelName);
-                $configuration->registerMessageHandler($projectionExecutorBuilder);
-
-                foreach ($projectionSetupConfiguration->getProjectionEventHandlers() as $projectionEventHandler) {
-                    $configuration->registerBeforeSendInterceptor(MethodInterceptor::create(
-                        Uuid::uuid4()->toString(),
-                        $interfaceToCallRegistry->getFor(ProjectionFlowController::class, "preSend"),
-                        ServiceActivatorBuilder::createWithDirectReference(new ProjectionFlowController($projectionRunningConfiguration->isPolling()), "preSend"),
-                        Precedence::SYSTEM_PRECEDENCE_BEFORE,
-                        $projectionEventHandler->getClassName() . "::" . $projectionEventHandler->getMethodName()
-                    ));
-                    $configuration->registerBeforeMethodInterceptor(MethodInterceptor::create(
-                        Uuid::uuid4()->toString(),
-                        $interfaceToCallRegistry->getFor(ProjectionExecutor::class, "beforeEventHandler"),
-                        new ProjectionExecutorBuilder($eventSourcingConfiguration, $projectionSetupConfiguration, $this->projectionSetupConfigurations, $projectionRunningConfiguration, "beforeEventHandler"),
-                        Precedence::SYSTEM_PRECEDENCE_BEFORE,
-                        $projectionEventHandler->getClassName() . "::" . $projectionEventHandler->getMethodName()
-                    ));
-                }
-
-                if ($projectionRunningConfiguration->isPolling()) {
-                    $configuration->registerConsumer(
-                        InboundChannelAdapterBuilder::createWithDirectObject(
-                            $generatedChannelName,
-                            new ProjectionChannelAdapter(),
-                            "run"
-                        )->withEndpointId($projectionSetupConfiguration->getProjectionName())
-                    );
-                }
+        foreach ($this->projectionSetupConfigurations as $index => $projectionSetupConfiguration) {
+            $generatedChannelName  = Uuid::uuid4()->toString();
+            $projectionRunningConfiguration = ProjectionRunningConfiguration::createEventDriven($projectionSetupConfiguration->getProjectionName());
+            if (array_key_exists($projectionSetupConfiguration->getProjectionName(), $projectionRunningConfigurations)) {
+                $projectionRunningConfiguration = $projectionRunningConfigurations[$projectionSetupConfiguration->getProjectionName()];
             }
-            foreach ($this->projectionLifeCycleServiceActivators as $serviceActivator) {
-                $configuration->registerMessageHandler($serviceActivator);
+            $projectionSetupConfiguration = $projectionSetupConfiguration
+                                    ->withOptions([
+                                        ReadModelProjector::OPTION_CACHE_SIZE => $projectionRunningConfiguration->getAmountOfCachedStreamNames(),
+                                        ReadModelProjector::OPTION_SLEEP => $projectionRunningConfiguration->getWaitBeforeCallingESWhenNoEventsFound(),
+                                        ReadModelProjector::OPTION_PERSIST_BLOCK_SIZE => $projectionRunningConfiguration->getPersistChangesAfterAmountOfOperations(),
+                                        ReadModelProjector::OPTION_LOCK_TIMEOUT_MS => $projectionRunningConfiguration->getProjectionLockTimeout(),
+                                        ReadModelProjector::DEFAULT_UPDATE_LOCK_THRESHOLD => $projectionRunningConfiguration->getUpdateLockTimeoutAfter()
+                                    ]);
+
+            $projectionExecutorBuilder = new ProjectionExecutorBuilder($eventSourcingConfiguration, $projectionSetupConfiguration, $this->projectionSetupConfigurations, $projectionRunningConfiguration, "execute");
+            $projectionExecutorBuilder = $projectionExecutorBuilder->withInputChannelName($generatedChannelName);
+            $configuration->registerMessageHandler($projectionExecutorBuilder);
+
+            foreach ($projectionSetupConfiguration->getProjectionEventHandlers() as $projectionEventHandler) {
+                $configuration->registerBeforeSendInterceptor(MethodInterceptor::create(
+                    Uuid::uuid4()->toString(),
+                    $interfaceToCallRegistry->getFor(ProjectionFlowController::class, "preSend"),
+                    ServiceActivatorBuilder::createWithDirectReference(new ProjectionFlowController($projectionRunningConfiguration->isPolling()), "preSend"),
+                    Precedence::SYSTEM_PRECEDENCE_BEFORE,
+                    $projectionEventHandler->getClassName() . "::" . $projectionEventHandler->getMethodName()
+                ));
+                $configuration->registerBeforeMethodInterceptor(MethodInterceptor::create(
+                    Uuid::uuid4()->toString(),
+                    $interfaceToCallRegistry->getFor(ProjectionExecutor::class, "beforeEventHandler"),
+                    new ProjectionExecutorBuilder($eventSourcingConfiguration, $projectionSetupConfiguration, $this->projectionSetupConfigurations, $projectionRunningConfiguration, "beforeEventHandler"),
+                    Precedence::SYSTEM_PRECEDENCE_BEFORE,
+                    $projectionEventHandler->getClassName() . "::" . $projectionEventHandler->getMethodName()
+                ));
             }
 
-            $this->registerEventStore($configuration, $eventSourcingConfiguration);
-            $this->registerProjectionManager($configuration, $eventSourcingConfiguration);
+            if ($projectionRunningConfiguration->isPolling()) {
+                $configuration->registerConsumer(
+                    InboundChannelAdapterBuilder::createWithDirectObject(
+                        $generatedChannelName,
+                        new ProjectionChannelAdapter(),
+                        "run"
+                    )->withEndpointId($projectionSetupConfiguration->getProjectionName())
+                );
+            }
         }
+        foreach ($this->projectionLifeCycleServiceActivators as $serviceActivator) {
+            $configuration->registerMessageHandler($serviceActivator);
+        }
+
+        $this->registerEventStore($configuration, $eventSourcingConfiguration);
+        $this->registerProjectionManager($configuration, $eventSourcingConfiguration);
     }
 
     public function canHandle($extensionObject): bool
