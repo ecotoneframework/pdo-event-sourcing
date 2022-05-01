@@ -60,4 +60,30 @@ class Ticket
     {
         $this->assignedPerson = $event->getAssignedPerson();
     }
+
+    public function setVersion(int $version): void
+    {
+        $this->version = $version;
+    }
+
+    public function toArray(): array
+    {
+        return [
+            "ticketId" => $this->ticketId,
+            "assignedPerson" => $this->assignedPerson,
+            "ticketType" => $this->ticketType,
+            "version" => $this->version
+        ];
+    }
+
+    public static function fromArray(array $data): Ticket
+    {
+        $ticket = new self();
+        $ticket->ticketId = $data["ticketId"];
+        $ticket->assignedPerson = $data["assignedPerson"];
+        $ticket->ticketType = $data["ticketType"];
+        $ticket->version = $data["version"];
+
+        return $ticket;
+    }
 }

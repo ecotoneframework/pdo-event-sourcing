@@ -15,6 +15,23 @@ Feature: activating as aggregate order entity
     Then I should see tickets in progress:
       | ticket_id  | ticket_type    |
 
+  Scenario: I verify building projection from event sourced when snapshots are enabled
+    Given I active messaging for namespaces
+      | Test\Ecotone\EventSourcing\Fixture\Ticket                      |
+      | Test\Ecotone\EventSourcing\Fixture\TicketWithSynchronousEventDrivenProjection                      |
+      | Test\Ecotone\EventSourcing\Fixture\Snapshots                      |
+    And I initialize projection "inProgressTicketList"
+    And I should see tickets in progress:
+      | ticket_id  | ticket_type    |
+    When I register "alert" ticket 123 with assignation to "Johny"
+    And I change assignation to "Franco" for ticket 123
+    Then I should see tickets in progress:
+      | ticket_id  | ticket_type    |
+      | 123        | alert          |
+    When I close ticket with id 123
+    Then I should see tickets in progress:
+      | ticket_id  | ticket_type    |
+
   Scenario: I verify building synchronous event driven projection using in memory event store
     Given I active messaging for namespaces
       | Test\Ecotone\EventSourcing\Fixture\Ticket                      |
@@ -180,7 +197,7 @@ Feature: activating as aggregate order entity
     And I register "alert" ticket 1234 with assignation to "Marcus"
     Then the result of calling "action_collector.getCount" should be 2
 
-  Scenario: Verify handling specific event stream when aggregate bases stream persistence is enabled
+  Scenario: Verify handling specific event stream when stream per aggregate persistence is enabled
     Given I active messaging for namespaces
       | Test\Ecotone\EventSourcing\Fixture\SpecificEventStream                      |
       | Test\Ecotone\EventSourcing\Fixture\Basket                      |
@@ -189,6 +206,15 @@ Feature: activating as aggregate order entity
     And I create basket with id 1001
     Then the result of calling "action_collector.getCount" should be 1
 
+  Scenario: Verify handling category stream when stream per aggregate persistence is enabled
+    Given I active messaging for namespaces
+      | Test\Ecotone\EventSourcing\Fixture\ProjectionFromCategoryUsingAggregatePerStream                      |
+      | Test\Ecotone\EventSourcing\Fixture\Basket                      |
+      | Test\Ecotone\EventSourcing\Fixture\Ticket                      |
+    When I create basket with id 1000
+    And I create basket with id 1001
+    Then the result of calling "action_collector.getCount" should be 2
+
   Scenario: Verify handling custom event stream when custom stream persistence is enabled
     Given I active messaging for namespaces
       | Test\Ecotone\EventSourcing\Fixture\CustomEventStream                      |
@@ -196,15 +222,6 @@ Feature: activating as aggregate order entity
       | Test\Ecotone\EventSourcing\Fixture\Ticket                      |
     When I create basket with id 2000
     And I create basket with id 2001
-    Then the result of calling "action_collector.getCount" should be 2
-
-  Scenario: Verify handling specific event stream when aggregate bases stream persistence is enabled
-    Given I active messaging for namespaces
-      | Test\Ecotone\EventSourcing\Fixture\ProjectionFromCategoryUsingAggregatePerStream                      |
-      | Test\Ecotone\EventSourcing\Fixture\Basket                      |
-      | Test\Ecotone\EventSourcing\Fixture\Ticket                      |
-    When I create basket with id 1000
-    And I create basket with id 1001
     Then the result of calling "action_collector.getCount" should be 2
 
   Scenario: Handle event and commands with Value Object Identifiers

@@ -15,11 +15,17 @@ use Ecotone\Messaging\Conversion\InMemoryConversionService;
 use Ecotone\Messaging\Conversion\MediaType;
 use Ecotone\Messaging\Handler\TypeDescriptor;
 use Ecotone\Messaging\MessageHeaders;
+use Ecotone\Messaging\Store\Document\DocumentStore;
+use Ecotone\Messaging\Store\Document\InMemoryDocumentStore;
+use Ecotone\Modelling\Event;
 use Ecotone\Modelling\EventStream;
+use Ecotone\Modelling\SaveAggregateService;
+use Ecotone\Modelling\SnapshotEvent;
 use Ramsey\Uuid\Uuid;
 use Test\Ecotone\EventSourcing\EventSourcingMessagingTest;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Event\TicketWasRegistered;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Ticket;
+use Test\Ecotone\Modelling\Fixture\Ticket\WorkerWasAssignedEvent;
 
 class EventSourcingRepositoryBuilderTest extends EventSourcingMessagingTest
 {
@@ -54,6 +60,52 @@ class EventSourcingRepositoryBuilderTest extends EventSourcingMessagingTest
         $resultStream = $repository->findBy(Ticket::class, ["ticketId" => $ticketId]);
         $this->assertEquals(1, $resultStream->getAggregateVersion());
         $this->assertEquals($ticketWasRegisteredEvent, $resultStream->getEvents()[0]->getEvent());
+    }
+
+    public function test_retrieving_with_snaphots()
+    {
+        $proophRepositoryBuilder = EventSourcingRepositoryBuilder::create(
+            EventSourcingConfiguration::createWithDefaults()
+                ->withSnapshots([Ticket::class], 1)
+        );
+
+        $ticketId = Uuid::uuid4()->toString();
+        $documentStore = InMemoryDocumentStore::createEmpty();
+        $ticket = new Ticket();
+        $ticketWasRegistered = new TicketWasRegistered($ticketId, "Johny", "standard");
+        $ticket->setVersion(1);
+        $ticketWasRegisteredEventAsArray = [
+            "ticketId" => $ticketId,
+            "ticketType" => "standard"
+        ];
+        $workerWasAssigned = new WorkerWasAssignedEvent($ticketId, 100);
+        $workerWasAssignedAsArray = [
+            "ticketId" => $ticketId,
+            "assignedWorkerId" => 100
+        ];
+
+        $ticket->applyTicketWasRegistered($ticketWasRegistered);
+        $documentStore->addDocument(SaveAggregateService::SNAPSHOT_COLLECTION, $ticketId, $ticket);
+
+        $repository = $proophRepositoryBuilder->build(InMemoryChannelResolver::createEmpty(), $this->getReferenceSearchServiceWithConnection([
+            EventMapper::class => EventMapper::createEmpty(),
+            AggregateStreamMapping::class => AggregateStreamMapping::createEmpty(),
+            ConversionService::REFERENCE_NAME => InMemoryConversionService::createWithoutConversion()
+                ->registerInPHPConversion($ticketWasRegistered, $ticketWasRegisteredEventAsArray)
+                ->registerInPHPConversion($ticketWasRegisteredEventAsArray, $ticketWasRegistered)
+                ->registerInPHPConversion($workerWasAssigned, $workerWasAssignedAsArray)
+                ->registerInPHPConversion($workerWasAssignedAsArray, $workerWasAssigned),
+            DocumentStore::class => $documentStore
+        ]));
+
+        $repository->save(["ticketId"=> $ticketId], Ticket::class, [$ticketWasRegistered, $workerWasAssigned], [
+            MessageHeaders::TIMESTAMP => 1610285647
+        ], 0);
+
+        $resultStream = $repository->findBy(Ticket::class, ["ticketId" => $ticketId]);
+        $this->assertEquals(2, $resultStream->getAggregateVersion());
+        $this->assertEquals(new SnapshotEvent($ticket), $resultStream->getEvents()[0]);
+        $this->assertEquals($workerWasAssigned, $resultStream->getEvents()[1]->getEvent());
     }
 
     public function test_having_two_streams_for_difference_instances_of_same_aggregate_using_aggregate_stream_strategy()

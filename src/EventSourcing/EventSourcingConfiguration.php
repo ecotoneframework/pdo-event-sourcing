@@ -4,12 +4,13 @@
 namespace Ecotone\EventSourcing;
 
 
+use Ecotone\Modelling\BaseEventSourcingConfiguration;
 use Enqueue\Dbal\DbalConnectionFactory;
 use Prooph\EventStore\InMemoryEventStore;
 use Prooph\EventStore\Pdo\PersistenceStrategy;
 use Prooph\EventStore\Projection\InMemoryProjectionManager;
 
-class EventSourcingConfiguration
+class EventSourcingConfiguration extends BaseEventSourcingConfiguration
 {
     private bool $initializeEventStoreOnStart = LazyProophEventStore::INITIALIZE_ON_STARTUP;
     private int $loadBatchSize = LazyProophEventStore::LOAD_BATCH_SIZE;

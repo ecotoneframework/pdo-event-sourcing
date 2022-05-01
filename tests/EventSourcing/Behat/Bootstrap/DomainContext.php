@@ -7,6 +7,8 @@ use Behat\Behat\Context\Context;
 use Behat\Gherkin\Node\TableNode;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception\TableNotFoundException;
+use Ecotone\Dbal\DbalReconnectableConnectionFactory;
+use Ecotone\Enqueue\CachedConnectionFactory;
 use Ecotone\EventSourcing\Config\EventSourcingModule;
 use Ecotone\EventSourcing\ProjectionManager;
 use Ecotone\Lite\EcotoneLiteConfiguration;
@@ -26,7 +28,9 @@ use Test\Ecotone\EventSourcing\Fixture\BasketListProjection\BasketList;
 use Test\Ecotone\EventSourcing\Fixture\CustomEventStream\CustomEventStreamProjection;
 use Test\Ecotone\EventSourcing\Fixture\ProjectionFromCategoryUsingAggregatePerStream\FromCategoryUsingAggregatePerStreamProjection;
 use Test\Ecotone\EventSourcing\Fixture\ProjectionFromMultipleStreams\MultipleStreamsProjection;
+use Test\Ecotone\EventSourcing\Fixture\Snapshots\TicketMediaTypeConverter;
 use Test\Ecotone\EventSourcing\Fixture\SpecificEventStream\SpecificEventStreamProjection;
+use Test\Ecotone\EventSourcing\Fixture\Ticket\Command\ChangeAssignedPerson;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Command\CloseTicket;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Command\RegisterTicket;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\TicketEventConverter;
@@ -185,7 +189,8 @@ class DomainContext extends TestCase implements Context
 
     private function prepareMessaging(array $namespaces): void
     {
-        $managerRegistryConnectionFactory = new DbalConnectionFactory(["dsn" => getenv("DATABASE_DSN") ? getenv("DATABASE_DSN") : null]);
+        $dbalConnectionFactory = new DbalConnectionFactory(["dsn" => getenv("DATABASE_DSN") ? getenv("DATABASE_DSN") : null]);
+        $managerRegistryConnectionFactory = CachedConnectionFactory::createFor(new DbalReconnectableConnectionFactory($dbalConnectionFactory));
         self::$connection                 = $managerRegistryConnectionFactory->createContext()->getDbalConnection();
 
         $objects = [];
@@ -204,6 +209,11 @@ class DomainContext extends TestCase implements Context
                 case "Test\Ecotone\EventSourcing\Fixture\BasketListProjection":
                 {
                     $objects = array_merge($objects, [new BasketList()]);
+                    break;
+                }
+                case "Test\Ecotone\EventSourcing\Fixture\Snapshots":
+                {
+                    $objects = array_merge($objects, [new TicketMediaTypeConverter()]);
                     break;
                 }
                 case "Test\Ecotone\EventSourcing\Fixture\SpecificEventStream":
@@ -257,7 +267,7 @@ class DomainContext extends TestCase implements Context
                     $objects,
                     [
                         "managerRegistry" => $managerRegistryConnectionFactory,
-                        DbalConnectionFactory::class => $managerRegistryConnectionFactory
+                        DbalConnectionFactory::class => $dbalConnectionFactory
                     ]
                 )
             ),
@@ -317,5 +327,13 @@ class DomainContext extends TestCase implements Context
             $content,
             $this->getQueryBus()->sendWithRouting("article.getContent", metadata: ["aggregate.id" => Uuid::fromString($id)])
         );
+    }
+
+    /**
+     * @When I change assignation to :name for ticket :ticketId
+     */
+    public function iChangeAssignationTo(string $name, int $ticketId)
+    {
+        $this->getCommandBus()->send(new ChangeAssignedPerson($ticketId, $name));
     }
 }
