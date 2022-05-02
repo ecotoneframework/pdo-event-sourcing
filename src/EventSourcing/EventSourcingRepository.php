@@ -18,6 +18,7 @@ use Ecotone\Messaging\MessageConverter\HeaderMapper;
 use Ecotone\Messaging\MessageHeaders;
 use Ecotone\Messaging\Store\Document\DocumentException;
 use Ecotone\Messaging\Store\Document\DocumentStore;
+use Ecotone\Messaging\Support\Assert;
 use Ecotone\Modelling\Attribute\AggregateVersion;
 use Ecotone\Modelling\DistributedMetadata;
 use Ecotone\Modelling\Event;
@@ -109,6 +110,8 @@ class EventSourcingRepository implements EventSourcedRepository
     public function save(array $identifiers, string $aggregateClassName, array $events, array $metadata, int $versionBeforeHandling): void
     {
         $aggregateId = reset($identifiers);
+        Assert::notNullAndEmpty($aggregateId, sprintf("There was a problem when retrieving identifier for %s", $aggregateClassName));
+
         $streamName = $this->getStreamName($aggregateClassName, $aggregateId);
         $metadata = OutboundMessageConverter::unsetEnqueueMetadata($metadata);
         $metadata = DistributedMetadata::unsetDistributionKeys($metadata);

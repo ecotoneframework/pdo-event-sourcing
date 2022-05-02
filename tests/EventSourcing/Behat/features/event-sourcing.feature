@@ -12,8 +12,10 @@ Feature: activating as aggregate order entity
       | ticket_id  | ticket_type    |
       | 123        | alert          |
     When I close ticket with id 123
+    And I register "info" ticket 124 with assignation to "Johny"
     Then I should see tickets in progress:
       | ticket_id  | ticket_type    |
+      | 124        | info          |
 
   Scenario: I verify building projection from event sourced when snapshots are enabled
     Given I active messaging for namespaces
@@ -29,8 +31,10 @@ Feature: activating as aggregate order entity
       | ticket_id  | ticket_type    |
       | 123        | alert          |
     When I close ticket with id 123
+    And I register "info" ticket 124 with assignation to "Johny"
     Then I should see tickets in progress:
       | ticket_id  | ticket_type    |
+      | 124        | info          |
 
   Scenario: I verify building synchronous event driven projection using in memory event store
     Given I active messaging for namespaces
