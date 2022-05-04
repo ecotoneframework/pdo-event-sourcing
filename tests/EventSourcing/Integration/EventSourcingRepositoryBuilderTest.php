@@ -85,7 +85,7 @@ class EventSourcingRepositoryBuilderTest extends EventSourcingMessagingTest
         ];
 
         $ticket->applyTicketWasRegistered($ticketWasRegistered);
-        $documentStore->addDocument(SaveAggregateService::SNAPSHOT_COLLECTION, $ticketId, $ticket);
+        $documentStore->addDocument(SaveAggregateService::getSnapshotCollectionName(Ticket::class), $ticketId, $ticket);
 
         $repository = $proophRepositoryBuilder->build(InMemoryChannelResolver::createEmpty(), $this->getReferenceSearchServiceWithConnection([
             EventMapper::class => EventMapper::createEmpty(),

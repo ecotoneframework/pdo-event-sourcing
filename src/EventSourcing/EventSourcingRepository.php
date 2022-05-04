@@ -64,24 +64,22 @@ class EventSourcingRepository implements EventSourcedRepository
         $snapshotEvent = [];
 
         if (in_array($aggregateClassName, $this->snapshotedAggregates)) {
-            try {
-                $aggregate = $this->documentStore->getDocument(SaveAggregateService::SNAPSHOT_COLLECTION, $aggregateId);
-                $propertyReader = new PropertyReaderAccessor();
-                $versionAnnotation             = TypeDescriptor::create(AggregateVersion::class);
-                $aggregateVersionPropertyName = null;
-                foreach (ClassDefinition::createFor(TypeDescriptor::createFromVariable($aggregate))->getProperties() as $property) {
-                    if ($property->hasAnnotation($versionAnnotation)) {
-                        $aggregateVersionPropertyName = $property->getName();
-                        break;
-                    }
+            $aggregate = $this->documentStore->getDocument(SaveAggregateService::getSnapshotCollectionName($aggregateClassName), $aggregateId);
+            $propertyReader = new PropertyReaderAccessor();
+            $versionAnnotation             = TypeDescriptor::create(AggregateVersion::class);
+            $aggregateVersionPropertyName = null;
+            foreach (ClassDefinition::createFor(TypeDescriptor::createFromVariable($aggregate))->getProperties() as $property) {
+                if ($property->hasAnnotation($versionAnnotation)) {
+                    $aggregateVersionPropertyName = $property->getName();
+                    break;
                 }
+            }
 
-                $aggregateVersion = $propertyReader->getPropertyValue(
-                    PropertyPath::createWith($aggregateVersionPropertyName),
-                    $aggregate
-                );
-                $snapshotEvent[] = new SnapshotEvent($aggregate);
-            }catch (DocumentException) {}
+            $aggregateVersion = $propertyReader->getPropertyValue(
+                PropertyPath::createWith($aggregateVersionPropertyName),
+                $aggregate
+            );
+            $snapshotEvent[] = new SnapshotEvent($aggregate);
         }
 
         $metadataMatcher = new MetadataMatcher();
