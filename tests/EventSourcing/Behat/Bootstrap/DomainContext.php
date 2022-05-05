@@ -28,6 +28,7 @@ use Test\Ecotone\EventSourcing\Fixture\BasketListProjection\BasketList;
 use Test\Ecotone\EventSourcing\Fixture\CustomEventStream\CustomEventStreamProjection;
 use Test\Ecotone\EventSourcing\Fixture\ProjectionFromCategoryUsingAggregatePerStream\FromCategoryUsingAggregatePerStreamProjection;
 use Test\Ecotone\EventSourcing\Fixture\ProjectionFromMultipleStreams\MultipleStreamsProjection;
+use Test\Ecotone\EventSourcing\Fixture\Snapshots\BasketMediaTypeConverter;
 use Test\Ecotone\EventSourcing\Fixture\Snapshots\TicketMediaTypeConverter;
 use Test\Ecotone\EventSourcing\Fixture\SpecificEventStream\SpecificEventStreamProjection;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Command\ChangeAssignedPerson;
@@ -184,7 +185,10 @@ class DomainContext extends TestCase implements Context
     public function iAddProductToBasketWithId(string $name, string $basketId)
     {
         $this->getCommandBus()->send(new AddProduct($basketId, $name));
-        self::$messagingSystem->run(BasketList::PROJECTION_NAME);
+
+        if (in_array(BasketList::PROJECTION_NAME, self::$messagingSystem->list())) {
+            self::$messagingSystem->run(BasketList::PROJECTION_NAME);
+        }
     }
 
     private function prepareMessaging(array $namespaces): void
@@ -213,7 +217,7 @@ class DomainContext extends TestCase implements Context
                 }
                 case "Test\Ecotone\EventSourcing\Fixture\Snapshots":
                 {
-                    $objects = array_merge($objects, [new TicketMediaTypeConverter()]);
+                    $objects = array_merge($objects, [new TicketMediaTypeConverter(), new BasketMediaTypeConverter()]);
                     break;
                 }
                 case "Test\Ecotone\EventSourcing\Fixture\SpecificEventStream":
@@ -335,5 +339,16 @@ class DomainContext extends TestCase implements Context
     public function iChangeAssignationTo(string $name, int $ticketId)
     {
         $this->getCommandBus()->send(new ChangeAssignedPerson($ticketId, $name));
+    }
+
+    /**
+     * @Then basket with id :basketId should contains :basket
+     */
+    public function basketWithIdShouldContains(int $basketId, string $basket)
+    {
+        $this->assertEquals(
+            implode(",",$this->getQueryBus()->sendWithRouting("basket.getCurrent", metadata: ["aggregate.id" => $basketId])),
+            $basket
+        );
     }
 }

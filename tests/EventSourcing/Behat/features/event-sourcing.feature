@@ -192,6 +192,20 @@ Feature: activating as aggregate order entity
       | id    | products    |
       | 1000  | ["milk"]    |
 
+  Scenario: I verify snapshoting aggregates called in turn
+    Given I active messaging for namespaces
+      | Test\Ecotone\EventSourcing\Fixture\Basket                      |
+      | Test\Ecotone\EventSourcing\Fixture\Snapshots                      |
+    When I create basket with id 1000
+    And I create basket with id 1001
+    When I add product "milk" to basket with id 1000
+    And I add product "cheese" to basket with id 1001
+    And I add product "ham" to basket with id 1000
+    And I add product "cheese" to basket with id 1001
+    And I add product "milk" to basket with id 1001
+    Then basket with id 1000 should contains "milk,ham"
+    Then basket with id 1001 should contains "cheese,cheese,milk"
+
   Scenario: Verify handling multiple streams for projection
     Given I active messaging for namespaces
       | Test\Ecotone\EventSourcing\Fixture\ProjectionFromMultipleStreams                      |

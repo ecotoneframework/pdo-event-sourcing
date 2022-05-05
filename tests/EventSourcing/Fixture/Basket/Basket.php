@@ -8,6 +8,7 @@ use Ecotone\Modelling\Attribute\AggregateIdentifier;
 use Ecotone\Modelling\Attribute\CommandHandler;
 use Ecotone\Modelling\Attribute\EventSourcingAggregate;
 use Ecotone\Modelling\Attribute\EventSourcingHandler;
+use Ecotone\Modelling\Attribute\QueryHandler;
 use Ecotone\Modelling\WithAggregateEvents;
 use Ecotone\Modelling\WithAggregateVersioning;
 use Test\Ecotone\EventSourcing\Fixture\Basket\Command\AddProduct;
@@ -30,6 +31,8 @@ class Basket
     #[AggregateIdentifier]
     private string $id;
 
+    private array $currentBasket = [];
+
     #[CommandHandler]
     public static function create(CreateBasket $command) : static
     {
@@ -46,8 +49,39 @@ class Basket
     }
 
     #[EventSourcingHandler]
-    public function applyBasketWasCreated(BasketWasCreated $basketWasCreated): void
+    public function whenBasketWasCreated(BasketWasCreated $event): void
     {
-        $this->id = $basketWasCreated->getId();
+        $this->id = $event->getId();
+    }
+
+    #[EventSourcingHandler]
+    public function whenProductWasAdded(ProductWasAddedToBasket $event): void
+    {
+        $this->currentBasket[] = $event->getProductName();
+    }
+
+    #[QueryHandler("basket.getCurrent")]
+    public function getCurrentBasket(): array
+    {
+        return $this->currentBasket;
+    }
+
+    public function toArray(): array
+    {
+        return [
+            "id" => $this->id,
+            "currentBasket" => $this->currentBasket,
+            "version" => $this->version
+        ];
+    }
+
+    public static function fromArray(array $data): self
+    {
+        $self = new self();
+        $self->id = $data["id"];
+        $self->currentBasket = $data["currentBasket"];
+        $self->version = $data["version"];
+
+        return $self;
     }
 }

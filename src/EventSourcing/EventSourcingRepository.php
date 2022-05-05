@@ -65,20 +65,9 @@ class EventSourcingRepository implements EventSourcedRepository
 
         if (in_array($aggregateClassName, $this->snapshotedAggregates)) {
             $aggregate = $this->documentStore->getDocument(SaveAggregateService::getSnapshotCollectionName($aggregateClassName), $aggregateId);
-            $propertyReader = new PropertyReaderAccessor();
-            $versionAnnotation             = TypeDescriptor::create(AggregateVersion::class);
-            $aggregateVersionPropertyName = null;
-            foreach (ClassDefinition::createFor(TypeDescriptor::createFromVariable($aggregate))->getProperties() as $property) {
-                if ($property->hasAnnotation($versionAnnotation)) {
-                    $aggregateVersionPropertyName = $property->getName();
-                    break;
-                }
-            }
+            $aggregateVersion = $this->getAggregateVersion($aggregate);
+            Assert::isTrue($aggregateVersion > 0, sprintf("Serialization for snapshot of %s is set incorrectly, it does not serialize aggregate version", $aggregate::class));
 
-            $aggregateVersion = $propertyReader->getPropertyValue(
-                PropertyPath::createWith($aggregateVersionPropertyName),
-                $aggregate
-            );
             $snapshotEvent[] = new SnapshotEvent($aggregate);
         }
 
@@ -94,8 +83,16 @@ class EventSourcingRepository implements EventSourcedRepository
             $aggregateId
         );
 
+        if ($aggregateVersion > 0) {
+            $metadataMatcher = $metadataMatcher->withMetadataMatch(
+                LazyProophEventStore::AGGREGATE_VERSION,
+                Operator::GREATER_THAN(),
+                $aggregateVersion
+            );
+        }
+
         try {
-            $streamEvents = $this->eventStore->load($streamName, $aggregateVersion + 1, null, $metadataMatcher);
+            $streamEvents = $this->eventStore->load($streamName, 1, null, $metadataMatcher);
         } catch (StreamNotFound) { return EventStream::createEmpty(); }
 
         if (!empty($streamEvents)) {
@@ -146,5 +143,24 @@ class EventSourcingRepository implements EventSourcedRepository
         }
 
         return new StreamName($streamName);
+    }
+
+    private function getAggregateVersion(object|array|string $aggregate): mixed
+    {
+        $propertyReader = new PropertyReaderAccessor();
+        $versionAnnotation = TypeDescriptor::create(AggregateVersion::class);
+        $aggregateVersionPropertyName = null;
+        foreach (ClassDefinition::createFor(TypeDescriptor::createFromVariable($aggregate))->getProperties() as $property) {
+            if ($property->hasAnnotation($versionAnnotation)) {
+                $aggregateVersionPropertyName = $property->getName();
+                break;
+            }
+        }
+
+        $aggregateVersion = $propertyReader->getPropertyValue(
+            PropertyPath::createWith($aggregateVersionPropertyName),
+            $aggregate
+        );
+        return $aggregateVersion;
     }
 }
