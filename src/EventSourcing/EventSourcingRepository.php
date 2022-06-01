@@ -16,8 +16,8 @@ use Ecotone\Messaging\Handler\Enricher\PropertyReaderAccessor;
 use Ecotone\Messaging\Handler\TypeDescriptor;
 use Ecotone\Messaging\MessageConverter\HeaderMapper;
 use Ecotone\Messaging\MessageHeaders;
-use Ecotone\Messaging\MessagingException;
 use Ecotone\Messaging\Store\Document\DocumentException;
+use Ecotone\Messaging\Store\Document\DocumentNotFound;
 use Ecotone\Messaging\Store\Document\DocumentStore;
 use Ecotone\Messaging\Support\Assert;
 use Ecotone\Modelling\Attribute\AggregateVersion;
@@ -71,7 +71,7 @@ class EventSourcingRepository implements EventSourcedRepository
                 Assert::isTrue($aggregateVersion > 0, sprintf("Serialization for snapshot of %s is set incorrectly, it does not serialize aggregate version", $aggregate::class));
 
                 $snapshotEvent[] = new SnapshotEvent($aggregate);
-            } catch (MessagingException) {}
+            } catch (DocumentNotFound) {}
         }
 
         $metadataMatcher = new MetadataMatcher();
