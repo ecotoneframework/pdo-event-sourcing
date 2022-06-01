@@ -16,6 +16,7 @@ use Ecotone\Messaging\Handler\Enricher\PropertyReaderAccessor;
 use Ecotone\Messaging\Handler\TypeDescriptor;
 use Ecotone\Messaging\MessageConverter\HeaderMapper;
 use Ecotone\Messaging\MessageHeaders;
+use Ecotone\Messaging\MessagingException;
 use Ecotone\Messaging\Store\Document\DocumentException;
 use Ecotone\Messaging\Store\Document\DocumentStore;
 use Ecotone\Messaging\Support\Assert;
@@ -64,11 +65,13 @@ class EventSourcingRepository implements EventSourcedRepository
         $snapshotEvent = [];
 
         if (in_array($aggregateClassName, $this->snapshotedAggregates)) {
-            $aggregate = $this->documentStore->getDocument(SaveAggregateService::getSnapshotCollectionName($aggregateClassName), $aggregateId);
-            $aggregateVersion = $this->getAggregateVersion($aggregate);
-            Assert::isTrue($aggregateVersion > 0, sprintf("Serialization for snapshot of %s is set incorrectly, it does not serialize aggregate version", $aggregate::class));
+            try {
+                $aggregate = $this->documentStore->getDocument(SaveAggregateService::getSnapshotCollectionName($aggregateClassName), $aggregateId);
+                $aggregateVersion = $this->getAggregateVersion($aggregate);
+                Assert::isTrue($aggregateVersion > 0, sprintf("Serialization for snapshot of %s is set incorrectly, it does not serialize aggregate version", $aggregate::class));
 
-            $snapshotEvent[] = new SnapshotEvent($aggregate);
+                $snapshotEvent[] = new SnapshotEvent($aggregate);
+            } catch (MessagingException) {}
         }
 
         $metadataMatcher = new MetadataMatcher();
