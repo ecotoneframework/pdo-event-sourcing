@@ -108,6 +108,50 @@ class EventSourcingRepositoryBuilderTest extends EventSourcingMessagingTest
         $this->assertEquals($workerWasAssigned, $resultStream->getEvents()[1]->getEvent());
     }
 
+    public function test_retrieving_with_snaphots_not_extist_in_documentstore()
+    {
+        $proophRepositoryBuilder = EventSourcingRepositoryBuilder::create(
+            EventSourcingConfiguration::createWithDefaults()
+                ->withSnapshots([Ticket::class], 1)
+        );
+
+        $ticketId = Uuid::uuid4()->toString();
+        $documentStore = InMemoryDocumentStore::createEmpty();
+        $ticket = new Ticket();
+        $ticketWasRegistered = new TicketWasRegistered($ticketId, "Johny", "standard");
+        $ticket->setVersion(1);
+        $ticketWasRegisteredEventAsArray = [
+            "ticketId" => $ticketId,
+            "ticketType" => "standard"
+        ];
+        $workerWasAssigned = new WorkerWasAssignedEvent($ticketId, 100);
+        $workerWasAssignedAsArray = [
+            "ticketId" => $ticketId,
+            "assignedWorkerId" => 100
+        ];
+
+        $ticket->applyTicketWasRegistered($ticketWasRegistered);
+
+        $repository = $proophRepositoryBuilder->build(InMemoryChannelResolver::createEmpty(), $this->getReferenceSearchServiceWithConnection([
+            EventMapper::class => EventMapper::createEmpty(),
+            AggregateStreamMapping::class => AggregateStreamMapping::createEmpty(),
+            ConversionService::REFERENCE_NAME => InMemoryConversionService::createWithoutConversion()
+                ->registerInPHPConversion($ticketWasRegistered, $ticketWasRegisteredEventAsArray)
+                ->registerInPHPConversion($ticketWasRegisteredEventAsArray, $ticketWasRegistered)
+                ->registerInPHPConversion($workerWasAssigned, $workerWasAssignedAsArray)
+                ->registerInPHPConversion($workerWasAssignedAsArray, $workerWasAssigned),
+            DocumentStore::class => $documentStore
+        ]));
+
+        $repository->save(["ticketId"=> $ticketId], Ticket::class, [$ticketWasRegistered, $workerWasAssigned], [
+            MessageHeaders::TIMESTAMP => 1610285647
+        ], 0);
+
+        $resultStream = $repository->findBy(Ticket::class, ["ticketId" => $ticketId]);
+        $this->assertEquals(2, $resultStream->getAggregateVersion());
+        $this->assertEquals($workerWasAssigned, $resultStream->getEvents()[1]->getEvent());
+    }
+
     public function test_having_two_streams_for_difference_instances_of_same_aggregate_using_aggregate_stream_strategy()
     {
         $proophRepositoryBuilder = EventSourcingRepositoryBuilder::create(
