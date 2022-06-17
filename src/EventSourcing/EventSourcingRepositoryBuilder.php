@@ -4,11 +4,6 @@
 namespace Ecotone\EventSourcing;
 
 
-use Doctrine\DBAL\Driver\PDOConnection;
-use Ecotone\Dbal\DbalReconnectableConnectionFactory;
-use Ecotone\EventSourcing\Config\EventSourcingModule;
-use Ecotone\EventSourcing\StreamConfiguration\OneStreamPerAggregateInstanceConfiguration;
-use Ecotone\EventSourcing\StreamConfiguration\SingleStreamConfiguration;
 use Ecotone\Messaging\Conversion\ConversionService;
 use Ecotone\Messaging\Handler\ChannelResolver;
 use Ecotone\Messaging\Handler\ReferenceSearchService;
@@ -16,16 +11,6 @@ use Ecotone\Messaging\MessageConverter\DefaultHeaderMapper;
 use Ecotone\Messaging\Store\Document\InMemoryDocumentStore;
 use Ecotone\Modelling\EventSourcedRepository;
 use Ecotone\Modelling\RepositoryBuilder;
-use Enqueue\Dbal\DbalConnectionFactory;
-use Exception;
-use Prooph\EventStore\Pdo\MariaDbEventStore;
-use Prooph\EventStore\Pdo\MySqlEventStore;
-use Prooph\EventStore\Pdo\PersistenceStrategy;
-use Prooph\EventStore\Pdo\PostgresEventStore;
-use Prooph\EventStore\Pdo\WriteLockStrategy\MariaDbMetadataLockStrategy;
-use Prooph\EventStore\Pdo\WriteLockStrategy\MysqlMetadataLockStrategy;
-use Prooph\EventStore\Pdo\WriteLockStrategy\NoLockStrategy;
-use Prooph\EventStore\Pdo\WriteLockStrategy\PostgresAdvisoryLockStrategy;
 
 final class EventSourcingRepositoryBuilder implements RepositoryBuilder
 {

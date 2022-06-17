@@ -53,6 +53,9 @@ class EventSourcingConfiguration extends BaseEventSourcingConfiguration
         return $eventSourcingConfiguration;
     }
 
+    /**
+     * This work as simple stream strategy, however put constraints on aggregate_id, aggregate_version, aggregate_type being present
+     */
     public function withSingleStreamPersistenceStrategy(): static
     {
         $this->persistenceStrategy = LazyProophEventStore::SINGLE_STREAM_PERSISTENCE;
@@ -60,9 +63,23 @@ class EventSourcingConfiguration extends BaseEventSourcingConfiguration
         return $this;
     }
 
+    /**
+     * Aggregate_id becomes a stream and each stream is separate table.
+     * Be careful this create a lot of database tables.
+     */
     public function withStreamPerAggregatePersistenceStrategy(): static
     {
         $this->persistenceStrategy = LazyProophEventStore::AGGREGATE_STREAM_PERSISTENCE;
+
+        return $this;
+    }
+
+    /**
+     * This does not verify, if aggregate_id, aggregate_version, aggregate_type is defined in metadata
+     */
+    public function withSimpleStreamPersistenceStrategy(): static
+    {
+        $this->persistenceStrategy = LazyProophEventStore::SIMPLE_STREAM_PERSISTENCE;
 
         return $this;
     }
@@ -134,6 +151,11 @@ class EventSourcingConfiguration extends BaseEventSourcingConfiguration
     public function isUsingAggregateStreamStrategy() : bool
     {
         return $this->getPersistenceStrategy() === LazyProophEventStore::AGGREGATE_STREAM_PERSISTENCE;
+    }
+
+    public function isUsingSimpleStreamStrategy() : bool
+    {
+        return $this->getPersistenceStrategy() === LazyProophEventStore::SIMPLE_STREAM_PERSISTENCE;
     }
 
     public function getPersistenceStrategy(): string

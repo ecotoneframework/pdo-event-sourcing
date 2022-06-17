@@ -59,7 +59,7 @@ class EventSourcingRepositoryBuilderTest extends EventSourcingMessagingTest
 
         $resultStream = $repository->findBy(Ticket::class, ["ticketId" => $ticketId]);
         $this->assertEquals(1, $resultStream->getAggregateVersion());
-        $this->assertEquals($ticketWasRegisteredEvent, $resultStream->getEvents()[0]->getEvent());
+        $this->assertEquals($ticketWasRegisteredEvent, $resultStream->getEvents()[0]->getPayload());
     }
 
     public function test_retrieving_with_snaphots()
@@ -105,7 +105,7 @@ class EventSourcingRepositoryBuilderTest extends EventSourcingMessagingTest
         $resultStream = $repository->findBy(Ticket::class, ["ticketId" => $ticketId]);
         $this->assertEquals(2, $resultStream->getAggregateVersion());
         $this->assertEquals(new SnapshotEvent($ticket), $resultStream->getEvents()[0]);
-        $this->assertEquals($workerWasAssigned, $resultStream->getEvents()[1]->getEvent());
+        $this->assertEquals($workerWasAssigned, $resultStream->getEvents()[1]->getPayload());
     }
 
     public function test_retrieving_with_snaphots_not_extist_in_documentstore()
@@ -149,7 +149,7 @@ class EventSourcingRepositoryBuilderTest extends EventSourcingMessagingTest
 
         $resultStream = $repository->findBy(Ticket::class, ["ticketId" => $ticketId]);
         $this->assertEquals(2, $resultStream->getAggregateVersion());
-        $this->assertEquals($workerWasAssigned, $resultStream->getEvents()[1]->getEvent());
+        $this->assertEquals($workerWasAssigned, $resultStream->getEvents()[1]->getPayload());
     }
 
     public function test_having_two_streams_for_difference_instances_of_same_aggregate_using_aggregate_stream_strategy()
@@ -196,11 +196,11 @@ class EventSourcingRepositoryBuilderTest extends EventSourcingMessagingTest
 
         $resultStream = $repository->findBy(Ticket::class, ["ticketId"=> $firstTicketAggregate]);
         $this->assertEquals(1, $resultStream->getAggregateVersion());
-        $this->assertEquals($firstTicketWasRegisteredEvent, $resultStream->getEvents()[0]->getEvent());
+        $this->assertEquals($firstTicketWasRegisteredEvent, $resultStream->getEvents()[0]->getPayload());
 
         $resultStream = $repository->findBy(Ticket::class, ["ticketId"=> $secondTicketAggregate]);
         $this->assertEquals(1, $resultStream->getAggregateVersion());
-        $this->assertEquals($secondTicketWasRegisteredEvent, $resultStream->getEvents()[0]->getEvent());
+        $this->assertEquals($secondTicketWasRegisteredEvent, $resultStream->getEvents()[0]->getPayload());
     }
 
     public function test_having_two_streams_for_difference_instances_of_same_aggregate_using_single_stream_strategy()
@@ -247,11 +247,11 @@ class EventSourcingRepositoryBuilderTest extends EventSourcingMessagingTest
 
         $resultStream = $repository->findBy(Ticket::class, ["ticketId"=> $firstTicketAggregate]);
         $this->assertEquals(1, $resultStream->getAggregateVersion());
-        $this->assertEquals($firstTicketWasRegisteredEvent, $resultStream->getEvents()[0]->getEvent());
+        $this->assertEquals($firstTicketWasRegisteredEvent, $resultStream->getEvents()[0]->getPayload());
 
         $resultStream = $repository->findBy(Ticket::class, ["ticketId"=> $secondTicketAggregate]);
         $this->assertEquals(1, $resultStream->getAggregateVersion());
-        $this->assertEquals($secondTicketWasRegisteredEvent, $resultStream->getEvents()[0]->getEvent());
+        $this->assertEquals($secondTicketWasRegisteredEvent, $resultStream->getEvents()[0]->getPayload());
     }
 
     public function test_handling_connection_as_registry()
@@ -284,6 +284,6 @@ class EventSourcingRepositoryBuilderTest extends EventSourcingMessagingTest
 
         $resultStream = $repository->findBy(Ticket::class, ["ticketId" => $ticketId]);
         $this->assertEquals(1, $resultStream->getAggregateVersion());
-        $this->assertEquals($ticketWasRegisteredEvent, $resultStream->getEvents()[0]->getEvent());
+        $this->assertEquals($ticketWasRegisteredEvent, $resultStream->getEvents()[0]->getPayload());
     }
 }

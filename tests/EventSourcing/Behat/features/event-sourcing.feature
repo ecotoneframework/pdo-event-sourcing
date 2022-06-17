@@ -247,3 +247,24 @@ Feature: activating as aggregate order entity
       | Test\Ecotone\EventSourcing\Fixture\ValueObjectIdentifier                      |
     When I publish article with id "fc6023e7-1d48-4f59-abc9-72a087787d3e" and content "Good book"
     Then I article with id "fc6023e7-1d48-4f59-abc9-72a087787d3e" should contains "Good book"
+
+  Scenario: Projection emitting events
+    Given I active messaging for namespaces
+      | Test\Ecotone\EventSourcing\Fixture\Ticket                      |
+      | Test\Ecotone\EventSourcing\Fixture\TicketEmittingProjection                      |
+    And I initialize projection "inProgressTicketList"
+    When I register "alert" ticket 123 with assignation to "Johny"
+    Then I should be notified with updated tickets "123" and published events count of 1
+    When I register "info" ticket 124 with assignation to "Johny"
+    Then I should be notified with updated tickets "124" and published events count of 2
+    When I delete projection for all in progress tickets
+
+#  Scenario: Projection emitting events should not republished in case replaying projection
+#    Given I active messaging for namespaces
+#      | Test\Ecotone\EventSourcing\Fixture\Ticket                      |
+#      | Test\Ecotone\EventSourcing\Fixture\TicketEmittingProjection                      |
+#    And I initialize projection "inProgressTicketList"
+#    And I register "alert" ticket 123 with assignation to "Johny"
+#    And I register "info" ticket 124 with assignation to "Johny"
+#    When I reset the projection for in progress tickets
+#    Then I should be notified with updated tickets "124" and published events count of 2

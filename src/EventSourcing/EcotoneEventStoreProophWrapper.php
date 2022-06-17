@@ -66,11 +66,19 @@ class EcotoneEventStoreProophWrapper implements EventStore
     {
         $proophEvents = [];
         foreach ($events as $eventToConvert) {
-            $payload = $eventToConvert;
-            $metadata = [];
+            if ($eventToConvert instanceof ProophMessage) {
+                $proophEvents[] = $eventToConvert;
+
+                continue;
+            }
+
             if ($eventToConvert instanceof Event) {
-                $payload = $eventToConvert->getEvent();
+                $payload = $eventToConvert->getPayload();
                 $metadata = $eventToConvert->getMetadata();
+            }else {
+                $payload = $eventToConvert;
+                $metadata = [];
+                $eventToConvert = Event::create($payload);
             }
 
             $proophEvents[] = new ProophMessage(

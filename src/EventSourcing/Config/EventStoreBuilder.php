@@ -30,6 +30,7 @@ class EventStoreBuilder extends InputOutputMessageHandlerBuilder
         $this->methodName = $methodName;
         $this->parameterConverters = $parameterConverters;
         $this->eventSourcingConfiguration = $eventSourcingConfiguration;
+        $this->inputMessageChannelName = $this->eventSourcingConfiguration->getEventStoreReferenceName() . $this->methodName;
     }
 
     /**
@@ -38,11 +39,6 @@ class EventStoreBuilder extends InputOutputMessageHandlerBuilder
     public static function create(string $methodName, array $parameterConverters, EventSourcingConfiguration $eventSourcingConfiguration) : static
     {
         return new self($methodName, $parameterConverters, $eventSourcingConfiguration);
-    }
-
-    public function getInputMessageChannelName() : string
-    {
-        return $this->eventSourcingConfiguration->getEventStoreReferenceName() . $this->methodName;
     }
 
     public function getInterceptedInterface(InterfaceToCallRegistry $interfaceToCallRegistry): InterfaceToCall

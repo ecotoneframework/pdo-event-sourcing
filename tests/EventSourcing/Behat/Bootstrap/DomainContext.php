@@ -35,6 +35,8 @@ use Test\Ecotone\EventSourcing\Fixture\Ticket\Command\ChangeAssignedPerson;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Command\CloseTicket;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Command\RegisterTicket;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\TicketEventConverter;
+use Test\Ecotone\EventSourcing\Fixture\TicketEmittingProjection\NotificationService;
+use Test\Ecotone\EventSourcing\Fixture\TicketEmittingProjection\TicketListUpdatedConverter;
 use Test\Ecotone\EventSourcing\Fixture\TicketWithPollingProjection\InProgressTicketList;
 use Test\Ecotone\EventSourcing\Fixture\ValueObjectIdentifier\ArticleEventConverter;
 use Test\Ecotone\EventSourcing\Fixture\ValueObjectIdentifier\PublishArticle;
@@ -257,6 +259,10 @@ class DomainContext extends TestCase implements Context
                     $objects = array_merge($objects, [new ArticleEventConverter()]);
                     break;
                 }
+                case "Test\Ecotone\EventSourcing\Fixture\TicketEmittingProjection": {
+                    $objects = array_merge($objects, [new \Test\Ecotone\EventSourcing\Fixture\TicketEmittingProjection\InProgressTicketList(self::$connection), new NotificationService(), new TicketListUpdatedConverter()]);
+                    break;
+                }
                 default:
                 {
                     throw new InvalidArgumentException("Namespace {$namespace} not yet implemented");
@@ -350,5 +356,14 @@ class DomainContext extends TestCase implements Context
             implode(",",$this->getQueryBus()->sendWithRouting("basket.getCurrent", metadata: ["aggregate.id" => $basketId])),
             $basket
         );
+    }
+
+    /**
+     * @Then I should be notified with updated tickets :ticketId and published events count of :count
+     */
+    public function iShouldBeNotifiedWithUpdatedTickets(string $ticketId, int $count)
+    {
+        $this->assertEquals($ticketId, $this->getQueryBus()->sendWithRouting("get.notifications"));
+        $this->assertCount($count, $this->getQueryBus()->sendWithRouting("get.published_events"));
     }
 }

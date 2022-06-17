@@ -2,6 +2,7 @@
 
 namespace Ecotone\EventSourcing;
 
+use Ecotone\EventSourcing\Config\EventSourcingModule;
 use Ecotone\Messaging\Gateway\MessagingEntrypoint;
 use Ecotone\Messaging\Handler\ReferenceSearchService;
 use Prooph\EventStore\Pdo\Projection\MariaDbProjectionManager;
@@ -128,6 +129,6 @@ class LazyProophProjectionManager implements ProjectionManager
     {
         /** @var MessagingEntrypoint $messagingEntrypoint */
         $messagingEntrypoint = $this->referenceSearchService->get(MessagingEntrypoint::class);
-        $messagingEntrypoint->send([], $this->projectionSetupConfigurations[$name]->getTriggeringChannelName());
+        $messagingEntrypoint->sendWithHeaders([], [EventSourcingModule::ECOTONE_ES_PROJECTION_ACTION_HEADER => $name], $this->projectionSetupConfigurations[$name]->getTriggeringChannelName());
     }
 }
