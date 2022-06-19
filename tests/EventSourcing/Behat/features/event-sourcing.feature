@@ -280,3 +280,15 @@ Feature: activating as aggregate order entity
     And I register "info" ticket 124 with assignation to "Johny"
     When I reset the projection for in progress tickets
     Then I should be notified with updated tickets "124" and published events count of 2
+
+  Scenario: Projection should be able to keep the state between runs
+    Given I active messaging for namespaces
+      | Test\Ecotone\EventSourcing\Fixture\Ticket                      |
+      | Test\Ecotone\EventSourcing\Fixture\TicketProjectionState                      |
+    When I register "alert" ticket 123 with assignation to "Johny"
+    Then I should see ticket count equal 1 and ticket closed count equal 0
+    When I register "alert" ticket 1234 with assignation to "Johny"
+    And I close ticket with id 1234
+    Then I should see ticket count equal 2 and ticket closed count equal 1
+    When I close ticket with id 123
+    Then I should see ticket count equal 2 and ticket closed count equal 2

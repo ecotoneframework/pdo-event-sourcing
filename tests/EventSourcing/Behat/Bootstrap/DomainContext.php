@@ -37,6 +37,8 @@ use Test\Ecotone\EventSourcing\Fixture\Ticket\Command\RegisterTicket;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\TicketEventConverter;
 use Test\Ecotone\EventSourcing\Fixture\TicketEmittingProjection\NotificationService;
 use Test\Ecotone\EventSourcing\Fixture\TicketEmittingProjection\TicketListUpdatedConverter;
+use Test\Ecotone\EventSourcing\Fixture\TicketProjectionState\StateAndEventConverter;
+use Test\Ecotone\EventSourcing\Fixture\TicketProjectionState\TicketCounterProjection;
 use Test\Ecotone\EventSourcing\Fixture\TicketWithPollingProjection\InProgressTicketList;
 use Test\Ecotone\EventSourcing\Fixture\ValueObjectIdentifier\ArticleEventConverter;
 use Test\Ecotone\EventSourcing\Fixture\ValueObjectIdentifier\PublishArticle;
@@ -263,6 +265,10 @@ class DomainContext extends TestCase implements Context
                     $objects = array_merge($objects, [new \Test\Ecotone\EventSourcing\Fixture\TicketEmittingProjection\InProgressTicketList(self::$connection), new NotificationService(), new TicketListUpdatedConverter()]);
                     break;
                 }
+                case "Test\Ecotone\EventSourcing\Fixture\TicketProjectionState": {
+                    $objects = array_merge($objects, [new \Test\Ecotone\EventSourcing\Fixture\TicketProjectionState\NotificationService(), new TicketCounterProjection(), new StateAndEventConverter()]);
+                    break;
+                }
                 default:
                 {
                     throw new InvalidArgumentException("Namespace {$namespace} not yet implemented");
@@ -373,5 +379,14 @@ class DomainContext extends TestCase implements Context
     public function thereShouldNoNotifiedEvent()
     {
         $this->assertNull($this->getQueryBus()->sendWithRouting("get.notifications"));
+    }
+
+    /**
+     * @Then I should see ticket count equal :ticketCount and ticket closed count equal :closedTicketCount
+     */
+    public function iShouldSeeTicketCountEqualAndTicketClosedCountEqual(int $ticketCount, int $closedTicketCount)
+    {
+        $this->assertEquals($ticketCount, $this->getQueryBus()->sendWithRouting("ticket.getCurrentCount"));
+        $this->assertEquals($closedTicketCount, $this->getQueryBus()->sendWithRouting("ticket.getClosedCount"));
     }
 }

@@ -8,8 +8,11 @@ use Ecotone\EventSourcing\LazyProophProjectionManager;
 use Ecotone\EventSourcing\ProjectionRunningConfiguration;
 use Ecotone\EventSourcing\ProjectionSetupConfiguration;
 use Ecotone\Messaging\Config\MessagingSystemConfiguration;
+use Ecotone\Messaging\Conversion\ConversionService;
+use Ecotone\Messaging\Conversion\MediaType;
 use Ecotone\Messaging\Gateway\MessagingEntrypoint;
 use Ecotone\Messaging\Gateway\MessagingEntrypointWithHeadersPropagation;
+use Ecotone\Messaging\Handler\TypeDescriptor;
 use Ecotone\Messaging\NullableMessageChannel;
 use Prooph\Common\Messaging\Message;
 use Prooph\EventStore\Projection\ProjectionStatus;
@@ -22,16 +25,10 @@ class ProjectionExecutor
     const PROJECTION_NAME             = "projection.name";
     const PROJECTION_IS_POLLING = "projection.isPolling";
 
-    private LazyProophProjectionManager $lazyProophProjectionManager;
-    private ProjectionSetupConfiguration $projectionConfiguration;
     private bool $wasInitialized = false;
-    private ProjectionRunningConfiguration $projectionRunningConfiguration;
 
-    public function __construct(LazyProophProjectionManager $lazyProophProjectionManager, ProjectionSetupConfiguration $projectionConfiguration, ProjectionRunningConfiguration $projectionRunningConfiguration)
+    public function __construct(private LazyProophProjectionManager $lazyProophProjectionManager, private ProjectionSetupConfiguration $projectionConfiguration, private ProjectionRunningConfiguration $projectionRunningConfiguration, private ConversionService $conversionService)
     {
-        $this->lazyProophProjectionManager = $lazyProophProjectionManager;
-        $this->projectionConfiguration = $projectionConfiguration;
-        $this->projectionRunningConfiguration = $projectionRunningConfiguration;
     }
 
     public function beforeEventHandler(\Ecotone\Messaging\Message $message, MessagingEntrypointWithHeadersPropagation $messagingEntrypoint) : ?\Ecotone\Messaging\Message
@@ -70,8 +67,9 @@ class ProjectionExecutor
         $projectionEventHandlers    = $this->projectionConfiguration->getProjectionEventHandlers();
         foreach ($projectionEventHandlers as $eventName => $projectionEventHandler) {
             $projectionConfiguration = $this->projectionConfiguration;
-            $handlers[$eventName] = function ($state, Message $event) use ($messagingEntrypoint, $projectionEventHandler, $projectionConfiguration, $status) : mixed {
-                $result = $messagingEntrypoint->sendWithHeaders(
+            $conversionService = $this->conversionService;
+            $handlers[$eventName] = function ($state, Message $event) use ($messagingEntrypoint, $projectionEventHandler, $projectionConfiguration, $status, $conversionService) : mixed {
+                $state = $messagingEntrypoint->sendWithHeaders(
                     $event->payload(),
                     array_merge($event->metadata(), [
                             self::PROJECTION_STATE => $state,
@@ -83,7 +81,20 @@ class ProjectionExecutor
                     $projectionEventHandler->getSynchronousRequestChannelName()
                 );
 
-                return $projectionConfiguration->isKeepingStateBetweenEvents() ? $result : null;
+                if (!is_null($state)) {
+                    $stateType = TypeDescriptor::createFromVariable($state);
+                    if (!$stateType->isNonCollectionArray()) {
+                        $state = $conversionService->convert(
+                            $state,
+                            $stateType,
+                            MediaType::createApplicationXPHP(),
+                            TypeDescriptor::createArrayType(),
+                            MediaType::createApplicationXPHP()
+                        );
+                    }
+                }
+
+                return $projectionConfiguration->isKeepingStateBetweenEvents() ? $state : null;
             };
         }
 
