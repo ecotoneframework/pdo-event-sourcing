@@ -10,6 +10,7 @@ use Ecotone\EventSourcing\Attribute\ProjectionInitialization;
 use Ecotone\EventSourcing\Attribute\ProjectionReset;
 use Ecotone\EventSourcing\EventStore;
 use Ecotone\EventSourcing\EventStreamEmitter;
+use Ecotone\EventSourcing\LazyProophProjectionManager;
 use Ecotone\EventSourcing\ProjectionManager;
 use Ecotone\Modelling\Attribute\EventHandler;
 use Ecotone\Modelling\Attribute\QueryHandler;
@@ -38,9 +39,9 @@ SQL)->fetchAllAssociative();
     }
 
     #[EventHandler(endpointId: "inProgressTicketList.addTicket")]
-    public function addTicket(TicketWasRegistered $event, array $metadata, EventStreamEmitter $eventStreamEmitter) : void
+    public function addTicket(TicketWasRegistered $event, EventStreamEmitter $eventStreamEmitter) : void
     {
-        $eventStreamEmitter->linkTo(self::NAME, [new TicketListUpdated($event->getTicketId())]);
+        $eventStreamEmitter->linkTo(LazyProophProjectionManager::getProjectionStreamName(self::NAME), [new TicketListUpdated($event->getTicketId())]);
 
         $this->connection->executeStatement(<<<SQL
     INSERT INTO in_progress_tickets VALUES (?,?)
@@ -50,7 +51,7 @@ SQL, [$event->getTicketId(), $event->getTicketType()]);
     #[EventHandler(endpointId: "inProgressTicketList.closeTicket")]
     public function closeTicket(TicketWasClosed $event, EventStreamEmitter $eventStreamEmitter) : void
     {
-        $eventStreamEmitter->linkTo(self::NAME, [new TicketListUpdated($event->getTicketId())]);
+        $eventStreamEmitter->emit([new TicketListUpdated($event->getTicketId())]);
 
         $this->connection->executeStatement(<<<SQL
     DELETE FROM in_progress_tickets WHERE ticket_id = ?

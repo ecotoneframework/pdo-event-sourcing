@@ -97,30 +97,40 @@ class LazyProophProjectionManager implements ProjectionManager
 
     public function fetchProjectionNames(?string $filter, int $limit = 20, int $offset = 0): array
     {
+        $this->ensureEventStoreIsPrepared();;
+
         return $this->getProjectionManager()->fetchProjectionNames($filter, $limit, $offset);
     }
 
     public function fetchProjectionNamesRegex(string $regex, int $limit = 20, int $offset = 0): array
     {
+        $this->ensureEventStoreIsPrepared();;
+
         return $this->getProjectionManager()->fetchProjectionNamesRegex($regex, $limit, $offset);
     }
 
     public function fetchProjectionStatus(string $name): ProjectionStatus
     {
+        $this->ensureEventStoreIsPrepared();;
+
         return $this->getProjectionManager()->fetchProjectionStatus($name);
     }
 
     public function fetchProjectionStreamPositions(string $name): array
     {
+        $this->ensureEventStoreIsPrepared();;
+
         return $this->getProjectionManager()->fetchProjectionStreamPositions($name);
     }
 
     public function fetchProjectionState(string $name): array
     {
+        $this->ensureEventStoreIsPrepared();;
+
         return $this->getProjectionManager()->fetchProjectionState($name);
     }
 
-    private function getLazyProophEventStore(): LazyProophEventStore
+    public function getLazyProophEventStore(): LazyProophEventStore
     {
         return new LazyProophEventStore($this->eventSourcingConfiguration, $this->referenceSearchService);
     }
@@ -129,6 +139,11 @@ class LazyProophProjectionManager implements ProjectionManager
     {
         /** @var MessagingEntrypoint $messagingEntrypoint */
         $messagingEntrypoint = $this->referenceSearchService->get(MessagingEntrypoint::class);
-        $messagingEntrypoint->sendWithHeaders([], [EventSourcingModule::ECOTONE_ES_PROJECTION_ACTION_HEADER => $name], $this->projectionSetupConfigurations[$name]->getTriggeringChannelName());
+        $messagingEntrypoint->send([], $this->projectionSetupConfigurations[$name]->getTriggeringChannelName());
+    }
+
+    public static function getProjectionStreamName(string $name): string
+    {
+        return "projection_" . $name;
     }
 }

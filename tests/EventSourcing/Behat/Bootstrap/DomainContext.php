@@ -366,4 +366,12 @@ class DomainContext extends TestCase implements Context
         $this->assertEquals($ticketId, $this->getQueryBus()->sendWithRouting("get.notifications"));
         $this->assertCount($count, $this->getQueryBus()->sendWithRouting("get.published_events"));
     }
+
+    /**
+     * @Then there should no notified event
+     */
+    public function thereShouldNoNotifiedEvent()
+    {
+        $this->assertNull($this->getQueryBus()->sendWithRouting("get.notifications"));
+    }
 }

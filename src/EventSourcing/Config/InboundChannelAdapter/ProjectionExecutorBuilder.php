@@ -8,6 +8,7 @@ use Ecotone\EventSourcing\LazyProophProjectionManager;
 use Ecotone\EventSourcing\ProjectionRunningConfiguration;
 use Ecotone\EventSourcing\ProjectionSetupConfiguration;
 use Ecotone\Messaging\Gateway\MessagingEntrypoint;
+use Ecotone\Messaging\Gateway\MessagingEntrypointWithHeadersPropagation;
 use Ecotone\Messaging\Handler\ChannelResolver;
 use Ecotone\Messaging\Handler\InputOutputMessageHandlerBuilder;
 use Ecotone\Messaging\Handler\InterfaceToCall;
@@ -45,7 +46,7 @@ class ProjectionExecutorBuilder extends InputOutputMessageHandlerBuilder impleme
             $this->methodName
         )
             ->withOutputMessageChannel($this->getOutputMessageChannelName())
-            ->withMethodParameterConverters([ReferenceBuilder::create("messagingEntrypoint", MessagingEntrypoint::class)])
+            ->withMethodParameterConverters([ReferenceBuilder::create("messagingEntrypoint", MessagingEntrypointWithHeadersPropagation::class)])
             ->build($channelResolver, $referenceSearchService);
     }
 

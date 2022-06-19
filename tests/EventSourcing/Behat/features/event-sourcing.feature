@@ -257,14 +257,26 @@ Feature: activating as aggregate order entity
     Then I should be notified with updated tickets "123" and published events count of 1
     When I register "info" ticket 124 with assignation to "Johny"
     Then I should be notified with updated tickets "124" and published events count of 2
-    When I delete projection for all in progress tickets
+    When I close ticket with id 123
+    Then I should be notified with updated tickets "123" and published events count of 3
 
-#  Scenario: Projection emitting events should not republished in case replaying projection
-#    Given I active messaging for namespaces
-#      | Test\Ecotone\EventSourcing\Fixture\Ticket                      |
-#      | Test\Ecotone\EventSourcing\Fixture\TicketEmittingProjection                      |
-#    And I initialize projection "inProgressTicketList"
-#    And I register "alert" ticket 123 with assignation to "Johny"
-#    And I register "info" ticket 124 with assignation to "Johny"
-#    When I reset the projection for in progress tickets
-#    Then I should be notified with updated tickets "124" and published events count of 2
+  Scenario: When projection is deleted emitted events will be removed too
+    Given I active messaging for namespaces
+      | Test\Ecotone\EventSourcing\Fixture\Ticket                      |
+      | Test\Ecotone\EventSourcing\Fixture\TicketEmittingProjection                      |
+    And I initialize projection "inProgressTicketList"
+    And I register "alert" ticket 123 with assignation to "Johny"
+    And I close ticket with id 123
+    When I delete projection for all in progress tickets
+    Then there should no notified event
+
+  Scenario: Projection emitting events should not republished in case replaying projection
+    Given I active messaging for namespaces
+      | Test\Ecotone\EventSourcing\Fixture\Ticket                      |
+      | Test\Ecotone\EventSourcing\Fixture\TicketEmittingProjection                      |
+      | Test\Ecotone\EventSourcing\Fixture\TicketWithLimitedLoad                      |
+    And I initialize projection "inProgressTicketList"
+    And I register "alert" ticket 123 with assignation to "Johny"
+    And I register "info" ticket 124 with assignation to "Johny"
+    When I reset the projection for in progress tickets
+    Then I should be notified with updated tickets "124" and published events count of 2
