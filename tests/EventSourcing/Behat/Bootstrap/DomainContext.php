@@ -389,4 +389,20 @@ class DomainContext extends TestCase implements Context
         $this->assertEquals($ticketCount, $this->getQueryBus()->sendWithRouting("ticket.getCurrentCount"));
         $this->assertEquals($closedTicketCount, $this->getQueryBus()->sendWithRouting("ticket.getClosedCount"));
     }
+
+    /**
+     * @When I reset the projection :projectionName
+     */
+    public function iResetTheProjection(string $projectionName)
+    {
+        self::$messagingSystem->runConsoleCommand(EventSourcingModule::ECOTONE_ES_RESET_PROJECTION, ["name" => $projectionName]);
+    }
+
+    /**
+     * @When I delete projection :projectionName
+     */
+    public function iDeleteProjection(string $projectionName)
+    {
+        self::$messagingSystem->runConsoleCommand(EventSourcingModule::ECOTONE_ES_DELETE_PROJECTION, ["name" => $projectionName]);
+    }
 }

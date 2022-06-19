@@ -292,3 +292,16 @@ Feature: activating as aggregate order entity
     Then I should see ticket count equal 2 and ticket closed count equal 1
     When I close ticket with id 123
     Then I should see ticket count equal 2 and ticket closed count equal 2
+
+  Scenario: Projection state should be reset together with projection
+    Given I active messaging for namespaces
+      | Test\Ecotone\EventSourcing\Fixture\Ticket                      |
+      | Test\Ecotone\EventSourcing\Fixture\TicketProjectionState                      |
+    And I register "alert" ticket 123 with assignation to "Johny"
+    And I register "alert" ticket 1234 with assignation to "Johny"
+    And I close ticket with id 1234
+    And I close ticket with id 123
+    When I reset the projection "ticketCounter"
+    Then I should see ticket count equal 2 and ticket closed count equal 2
+    When I register "alert" ticket 12345 with assignation to "Johny"
+    Then I should see ticket count equal 3 and ticket closed count equal 2
