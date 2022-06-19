@@ -65,13 +65,14 @@ class EventSourcingRepository implements EventSourcedRepository
         $snapshotEvent = [];
 
         if (in_array($aggregateClassName, $this->snapshotedAggregates)) {
-            try {
-                $aggregate = $this->documentStore->getDocument(SaveAggregateService::getSnapshotCollectionName($aggregateClassName), $aggregateId);
+            $aggregate = $this->documentStore->findDocument(SaveAggregateService::getSnapshotCollectionName($aggregateClassName), $aggregateId);
+
+            if (!is_null($aggregate)) {
                 $aggregateVersion = $this->getAggregateVersion($aggregate);
                 Assert::isTrue($aggregateVersion > 0, sprintf("Serialization for snapshot of %s is set incorrectly, it does not serialize aggregate version", $aggregate::class));
 
                 $snapshotEvent[] = new SnapshotEvent($aggregate);
-            } catch (DocumentNotFound) {}
+            }
         }
 
         $metadataMatcher = new MetadataMatcher();
