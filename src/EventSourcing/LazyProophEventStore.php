@@ -115,16 +115,12 @@ class LazyProophEventStore implements EventStore
 
     public function create(Stream $stream): void
     {
-        $this->prepareEventStore();
-
         $this->getEventStore()->create($stream);
         $this->ensuredExistingStreams[$stream->streamName()->toString()] = true;
     }
 
     public function appendTo(StreamName $streamName, Iterator $streamEvents): void
     {
-        $this->prepareEventStore();
-
         if (!array_key_exists($streamName->toString(), $this->ensuredExistingStreams) && !$this->hasStream($streamName)) {
             $this->create(new Stream($streamName, $streamEvents, []));
         }else {
@@ -168,6 +164,7 @@ class LazyProophEventStore implements EventStore
         if ($this->initializedEventStore) {
             return $this->initializedEventStore;
         }
+        $this->prepareEventStore();
 
         if ($this->eventSourcingConfiguration->isInMemory()) {
             $this->initializedEventStore = $this->eventSourcingConfiguration->getInMemoryEventStore();
