@@ -2,6 +2,7 @@
 
 namespace Test\Ecotone\EventSourcing\Fixture\Basket;
 
+use Ecotone\EventSourcing\Attribute\AggregateType;
 use Ecotone\EventSourcing\Attribute\Stream;
 use Ecotone\Modelling\Attribute\AggregateFactory;
 use Ecotone\Modelling\Attribute\AggregateIdentifier;
@@ -21,9 +22,11 @@ use Test\Ecotone\EventSourcing\Fixture\Ticket\Ticket;
 
 #[EventSourcingAggregate(true)]
 #[Stream(self::BASKET_STREAM)]
+#[AggregateType(self::AGGREGATE_TYPE)]
 class Basket
 {
     const BASKET_STREAM = "basket_stream";
+    const AGGREGATE_TYPE = 'basket';
 
     use WithAggregateEvents;
     use WithAggregateVersioning;

@@ -71,6 +71,7 @@ final class EventSourcingRepositoryBuilder implements RepositoryBuilder
             $headerMapper,
             $this->eventSourcingConfiguration,
             $referenceSearchService->get(AggregateStreamMapping::class),
+            $referenceSearchService->get(AggregateTypeMapping::class),
             $this->eventSourcingConfiguration->getSnapshotsAggregateClasses(),
             $this->eventSourcingConfiguration->getSnapshotsAggregateClasses() == [] ? InMemoryDocumentStore::createEmpty() : $referenceSearchService->get($this->eventSourcingConfiguration->getDocumentStoreReference())
         );
