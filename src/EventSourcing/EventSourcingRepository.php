@@ -43,7 +43,7 @@ class EventSourcingRepository implements EventSourcedRepository
     private EventSourcingConfiguration $eventSourcingConfiguration;
     private AggregateStreamMapping $aggregateStreamMapping;
 
-    public function __construct(EcotoneEventStoreProophWrapper $eventStore, array $handledAggregateClassNames, HeaderMapper $headerMapper, EventSourcingConfiguration $eventSourcingConfiguration, AggregateStreamMapping $aggregateStreamMapping, private array $snapshotedAggregates, private DocumentStore $documentStore)
+    public function __construct(EcotoneEventStoreProophWrapper $eventStore, array $handledAggregateClassNames, HeaderMapper $headerMapper, EventSourcingConfiguration $eventSourcingConfiguration, AggregateStreamMapping $aggregateStreamMapping, private AggregateTypeMapping $aggregateTypeMapping, private array $snapshotedAggregates, private DocumentStore $documentStore)
     {
         $this->eventStore = $eventStore;
         $this->headerMapper = $headerMapper;
@@ -62,6 +62,7 @@ class EventSourcingRepository implements EventSourcedRepository
         $aggregateId = reset($identifiers);
         $aggregateVersion = 0;
         $streamName = $this->getStreamName($aggregateClassName, $aggregateId);
+        $aggregateType = $this->getAggregateType($aggregateClassName);
         $snapshotEvent = [];
 
         if (in_array($aggregateClassName, $this->snapshotedAggregates)) {
@@ -79,7 +80,7 @@ class EventSourcingRepository implements EventSourcedRepository
         $metadataMatcher = $metadataMatcher->withMetadataMatch(
             LazyProophEventStore::AGGREGATE_TYPE,
             Operator::EQUALS(),
-            $aggregateClassName
+            $aggregateType
         );
         $metadataMatcher = $metadataMatcher->withMetadataMatch(
             LazyProophEventStore::AGGREGATE_ID,
@@ -112,6 +113,7 @@ class EventSourcingRepository implements EventSourcedRepository
         Assert::notNullAndEmpty($aggregateId, sprintf("There was a problem when retrieving identifier for %s", $aggregateClassName));
 
         $streamName = $this->getStreamName($aggregateClassName, $aggregateId);
+        $aggregateType = $this->getAggregateType($aggregateClassName);
         $metadata = OutboundMessageConverter::unsetEnqueueMetadata($metadata);
         $metadata = DistributedMetadata::unsetDistributionKeys($metadata);
 
@@ -126,7 +128,7 @@ class EventSourcingRepository implements EventSourcedRepository
                     [
                         MessageHeaders::MESSAGE_ID => Uuid::uuid4()->toString(),
                         LazyProophEventStore::AGGREGATE_ID => $aggregateId,
-                        LazyProophEventStore::AGGREGATE_TYPE => $aggregateClassName,
+                        LazyProophEventStore::AGGREGATE_TYPE => $aggregateType,
                         LazyProophEventStore::AGGREGATE_VERSION => $versionBeforeHandling + $eventNumber
                     ]
                 )
@@ -147,6 +149,15 @@ class EventSourcingRepository implements EventSourcedRepository
         }
 
         return new StreamName($streamName);
+    }
+
+    private function getAggregateType(string $aggregateClassName): string
+    {
+        if (array_key_exists($aggregateClassName, $this->aggregateTypeMapping->getAggregateTypeMapping())) {
+            return $this->aggregateTypeMapping->getAggregateTypeMapping()[$aggregateClassName];
+        }
+
+        return $aggregateClassName;
     }
 
     private function getAggregateVersion(object|array|string $aggregate): mixed

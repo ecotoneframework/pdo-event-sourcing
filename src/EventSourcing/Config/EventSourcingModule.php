@@ -5,6 +5,8 @@ namespace Ecotone\EventSourcing\Config;
 
 use Ecotone\AnnotationFinder\AnnotationFinder;
 use Ecotone\EventSourcing\AggregateStreamMapping;
+use Ecotone\EventSourcing\AggregateTypeMapping;
+use Ecotone\EventSourcing\Attribute\AggregateType;
 use Ecotone\EventSourcing\Attribute\Projection;
 use Ecotone\EventSourcing\Attribute\ProjectionDelete;
 use Ecotone\EventSourcing\Attribute\ProjectionInitialization;
@@ -75,6 +77,7 @@ class EventSourcingModule extends NoExternalConfigurationModule
     private array $projectionLifeCycleServiceActivators = [];
     private EventMapper $eventMapper;
     private AggregateStreamMapping $aggregateToStreamMapping;
+    private AggregateTypeMapping $aggregateTypeMapping;
     /** @var InterfaceToCall[] */
     private array $relatedInterfaces = [];
     /** @var string[] */
@@ -84,12 +87,13 @@ class EventSourcingModule extends NoExternalConfigurationModule
      * @var ProjectionSetupConfiguration[]
      * @var ServiceActivatorBuilder[]
      */
-    private function __construct(array $projectionConfigurations, array $projectionLifeCycleServiceActivators, EventMapper $eventMapper, AggregateStreamMapping $aggregateToStreamMapping, array $relatedInterfaces, array $requiredReferences)
+    private function __construct(array $projectionConfigurations, array $projectionLifeCycleServiceActivators, EventMapper $eventMapper, AggregateStreamMapping $aggregateToStreamMapping, AggregateTypeMapping $aggregateTypeMapping, array $relatedInterfaces, array $requiredReferences)
     {
         $this->projectionSetupConfigurations        = $projectionConfigurations;
         $this->projectionLifeCycleServiceActivators = $projectionLifeCycleServiceActivators;
         $this->eventMapper                          = $eventMapper;
         $this->aggregateToStreamMapping             = $aggregateToStreamMapping;
+        $this->aggregateTypeMapping                 = $aggregateTypeMapping;
         $this->relatedInterfaces                    = $relatedInterfaces;
         $this->requiredReferences                   = $requiredReferences;
     }
@@ -112,6 +116,14 @@ class EventSourcingModule extends NoExternalConfigurationModule
             $attribute = $annotationRegistrationService->getAttributeForClass($aggregateWithCustomStream, Stream::class);
 
             $aggregateToStreamMapping[$aggregateWithCustomStream] = $attribute->getName();
+        }
+
+        $aggregateTypeMapping = [];
+        foreach ($annotationRegistrationService->findAnnotatedClasses(AggregateType::class) as $aggregateWithCustomType) {
+            /** @var Stream $attribute */
+            $attribute = $annotationRegistrationService->getAttributeForClass($aggregateWithCustomType, AggregateType::class);
+
+            $aggregateTypeMapping[$aggregateWithCustomType] = $attribute->getName();
         }
 
 
@@ -218,13 +230,14 @@ class EventSourcingModule extends NoExternalConfigurationModule
             );
         }
 
-        return new self($projectionSetupConfigurations, $projectionLifeCyclesServiceActivators, EventMapper::createWith($fromClassToNameMapping, $fromNameToClassMapping), AggregateStreamMapping::createWith($aggregateToStreamMapping), $relatedInterfaces, array_unique($requiredReferences));
+        return new self($projectionSetupConfigurations, $projectionLifeCyclesServiceActivators, EventMapper::createWith($fromClassToNameMapping, $fromNameToClassMapping), AggregateStreamMapping::createWith($aggregateToStreamMapping), AggregateTypeMapping::createWith($aggregateTypeMapping), $relatedInterfaces, array_unique($requiredReferences));
     }
 
     public function prepare(Configuration $configuration, array $extensionObjects, ModuleReferenceSearchService $moduleReferenceSearchService, InterfaceToCallRegistry $interfaceToCallRegistry): void
     {
         $moduleReferenceSearchService->store(EventMapper::class, $this->eventMapper);
         $moduleReferenceSearchService->store(AggregateStreamMapping::class, $this->aggregateToStreamMapping);
+        $moduleReferenceSearchService->store(AggregateTypeMapping::class, $this->aggregateTypeMapping);
         $configuration->registerRelatedInterfaces($this->relatedInterfaces);
         $configuration->requireReferences($this->requiredReferences);
 
