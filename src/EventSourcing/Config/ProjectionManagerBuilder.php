@@ -46,7 +46,7 @@ class ProjectionManagerBuilder extends InputOutputMessageHandlerBuilder
 
     public function getInputMessageChannelName() : string
     {
-        return $this->eventSourcingConfiguration->getProjectManagerReferenceName() . $this->methodName;
+        return $this->getProjectionManagerActionChannel($this->eventSourcingConfiguration->getProjectManagerReferenceName(), $this->methodName);
     }
 
     public function getInterceptedInterface(InterfaceToCallRegistry $interfaceToCallRegistry): InterfaceToCall
@@ -73,5 +73,10 @@ class ProjectionManagerBuilder extends InputOutputMessageHandlerBuilder
     public function getRequiredReferenceNames(): array
     {
         return [];
+    }
+
+    public static function getProjectionManagerActionChannel(string $projectionManagerReference, string $methodName): string
+    {
+        return $projectionManagerReference . $methodName;
     }
 }

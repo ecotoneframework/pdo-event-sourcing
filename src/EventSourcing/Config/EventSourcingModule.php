@@ -11,6 +11,7 @@ use Ecotone\EventSourcing\Attribute\Projection;
 use Ecotone\EventSourcing\Attribute\ProjectionDelete;
 use Ecotone\EventSourcing\Attribute\ProjectionInitialization;
 use Ecotone\EventSourcing\Attribute\ProjectionReset;
+use Ecotone\EventSourcing\Attribute\ProjectionStateGateway;
 use Ecotone\EventSourcing\Attribute\Stream;
 use Ecotone\EventSourcing\Config\InboundChannelAdapter\ProjectionChannelAdapter;
 use Ecotone\EventSourcing\Config\InboundChannelAdapter\ProjectionExecutor;
@@ -86,8 +87,9 @@ class EventSourcingModule extends NoExternalConfigurationModule
     /**
      * @var ProjectionSetupConfiguration[]
      * @var ServiceActivatorBuilder[]
+     * @var GatewayProxyBuilder[]
      */
-    private function __construct(array $projectionConfigurations, array $projectionLifeCycleServiceActivators, EventMapper $eventMapper, AggregateStreamMapping $aggregateToStreamMapping, AggregateTypeMapping $aggregateTypeMapping, array $relatedInterfaces, array $requiredReferences)
+    private function __construct(array $projectionConfigurations, array $projectionLifeCycleServiceActivators, EventMapper $eventMapper, AggregateStreamMapping $aggregateToStreamMapping, AggregateTypeMapping $aggregateTypeMapping, array $relatedInterfaces, array $requiredReferences, private array $projectionStateGateways)
     {
         $this->projectionSetupConfigurations        = $projectionConfigurations;
         $this->projectionLifeCycleServiceActivators = $projectionLifeCycleServiceActivators;
@@ -126,6 +128,23 @@ class EventSourcingModule extends NoExternalConfigurationModule
             $aggregateTypeMapping[$aggregateWithCustomType] = $attribute->getName();
         }
 
+        $projectionStateGateways = [];
+        foreach ($annotationRegistrationService->findAnnotatedMethods(ProjectionStateGateway::class) as $projectionStateGatewayConfiguration) {
+            /** @var ProjectionStateGateway $attribute */
+            $attribute = $projectionStateGatewayConfiguration->getAnnotationForMethod();
+
+            $projectionStateGateways[] = GatewayProxyBuilder::create(
+                $projectionStateGatewayConfiguration->getClassName(),
+                $projectionStateGatewayConfiguration->getClassName(),
+                $projectionStateGatewayConfiguration->getMethodName(),
+                ProjectionManagerBuilder::getProjectionManagerActionChannel(
+                    $attribute->getProjectioManagerReference(),
+                    "fetchProjectionState"
+                )
+            )->withParameterConverters([
+                GatewayHeaderValueBuilder::create("ecotone.eventSourcing.manager.name", $attribute->getProjectionName())
+            ]);
+        }
 
         $projectionClassNames                  = $annotationRegistrationService->findAnnotatedClasses(Projection::class);
         $projectionEventHandlers               = $annotationRegistrationService->findCombined(Projection::class, EventHandler::class);
@@ -230,7 +249,7 @@ class EventSourcingModule extends NoExternalConfigurationModule
             );
         }
 
-        return new self($projectionSetupConfigurations, $projectionLifeCyclesServiceActivators, EventMapper::createWith($fromClassToNameMapping, $fromNameToClassMapping), AggregateStreamMapping::createWith($aggregateToStreamMapping), AggregateTypeMapping::createWith($aggregateTypeMapping), $relatedInterfaces, array_unique($requiredReferences));
+        return new self($projectionSetupConfigurations, $projectionLifeCyclesServiceActivators, EventMapper::createWith($fromClassToNameMapping, $fromNameToClassMapping), AggregateStreamMapping::createWith($aggregateToStreamMapping), AggregateTypeMapping::createWith($aggregateTypeMapping), $relatedInterfaces, array_unique($requiredReferences), $projectionStateGateways);
     }
 
     public function prepare(Configuration $configuration, array $extensionObjects, ModuleReferenceSearchService $moduleReferenceSearchService, InterfaceToCallRegistry $interfaceToCallRegistry): void
@@ -429,6 +448,10 @@ class EventSourcingModule extends NoExternalConfigurationModule
             $eventSourcingConfiguration,
             $configuration
         );
+
+        foreach ($this->projectionStateGateways as $projectionStateGateway) {
+            $configuration->registerGatewayBuilder($projectionStateGateway);
+        }
     }
 
     private function registerProjectionManager(Configuration $configuration, EventSourcingConfiguration $eventSourcingConfiguration): void

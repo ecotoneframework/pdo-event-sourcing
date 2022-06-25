@@ -37,6 +37,8 @@ use Test\Ecotone\EventSourcing\Fixture\Ticket\Command\RegisterTicket;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\TicketEventConverter;
 use Test\Ecotone\EventSourcing\Fixture\TicketEmittingProjection\NotificationService;
 use Test\Ecotone\EventSourcing\Fixture\TicketEmittingProjection\TicketListUpdatedConverter;
+use Test\Ecotone\EventSourcing\Fixture\TicketProjectionState\CounterState;
+use Test\Ecotone\EventSourcing\Fixture\TicketProjectionState\CounterStateGateway;
 use Test\Ecotone\EventSourcing\Fixture\TicketProjectionState\StateAndEventConverter;
 use Test\Ecotone\EventSourcing\Fixture\TicketProjectionState\TicketCounterProjection;
 use Test\Ecotone\EventSourcing\Fixture\TicketWithPollingProjection\InProgressTicketList;
@@ -83,6 +85,11 @@ class DomainContext extends TestCase implements Context
     private function getQueryBus(): QueryBus
     {
         return self::$messagingSystem->getGatewayByName(QueryBus::class);
+    }
+
+    private function getGateway(string $gatewayReference): object
+    {
+        return self::$messagingSystem->getGatewayByName($gatewayReference);
     }
 
     /**
@@ -388,6 +395,10 @@ class DomainContext extends TestCase implements Context
     {
         $this->assertEquals($ticketCount, $this->getQueryBus()->sendWithRouting("ticket.getCurrentCount"));
         $this->assertEquals($closedTicketCount, $this->getQueryBus()->sendWithRouting("ticket.getClosedCount"));
+
+        /** @var CounterStateGateway $gateway */
+        $gateway = $this->getGateway(CounterStateGateway::class);
+        $this->assertEquals(new CounterState($ticketCount, $closedTicketCount), $gateway->fetchState());
     }
 
     /**
