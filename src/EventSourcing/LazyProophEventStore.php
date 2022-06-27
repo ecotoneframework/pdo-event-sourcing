@@ -6,6 +6,8 @@ namespace Ecotone\EventSourcing;
 
 use Doctrine\DBAL\Driver\PDOConnection;
 use Ecotone\Dbal\DbalReconnectableConnectionFactory;
+use Ecotone\EventSourcing\PersistenceStrategy\InterlopMariaDbSimpleStreamStrategy;
+use Ecotone\EventSourcing\PersistenceStrategy\InterlopMysqlSimpleStreamStrategy;
 use Ecotone\Messaging\Handler\InMemoryReferenceSearchService;
 use Ecotone\Messaging\Handler\ReferenceSearchService;
 use Ecotone\Messaging\Support\Assert;
@@ -217,7 +219,7 @@ class LazyProophEventStore implements EventStore
         return match ($this->eventSourcingConfiguration->getPersistenceStrategy()) {
             self::AGGREGATE_STREAM_PERSISTENCE => new PersistenceStrategy\MySqlAggregateStreamStrategy($this->messageConverter),
             self::SINGLE_STREAM_PERSISTENCE => new PersistenceStrategy\MySqlSingleStreamStrategy($this->messageConverter),
-            self::SIMPLE_STREAM_PERSISTENCE => new PersistenceStrategy\MySqlSimpleStreamStrategy($this->messageConverter),
+            self::SIMPLE_STREAM_PERSISTENCE => new InterlopMysqlSimpleStreamStrategy($this->messageConverter),
             self::CUSTOM_STREAM_PERSISTENCE => $this->eventSourcingConfiguration->getCustomPersistenceStrategy(),
         };
     }
@@ -227,7 +229,7 @@ class LazyProophEventStore implements EventStore
         return match ($this->eventSourcingConfiguration->getPersistenceStrategy()) {
             self::AGGREGATE_STREAM_PERSISTENCE => new PersistenceStrategy\MariaDbAggregateStreamStrategy($this->messageConverter),
             self::SINGLE_STREAM_PERSISTENCE => new PersistenceStrategy\MariaDbSingleStreamStrategy($this->messageConverter),
-            self::SIMPLE_STREAM_PERSISTENCE => new PersistenceStrategy\MariaDbSimpleStreamStrategy($this->messageConverter),
+            self::SIMPLE_STREAM_PERSISTENCE => new InterlopMariaDbSimpleStreamStrategy($this->messageConverter),
             self::CUSTOM_STREAM_PERSISTENCE => $this->eventSourcingConfiguration->getCustomPersistenceStrategy(),
         };
     }
