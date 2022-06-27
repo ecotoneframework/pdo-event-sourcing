@@ -15,6 +15,7 @@ use Ecotone\Messaging\Gateway\MessagingEntrypointWithHeadersPropagation;
 use Ecotone\Messaging\Handler\TypeDescriptor;
 use Ecotone\Messaging\NullableMessageChannel;
 use Prooph\Common\Messaging\Message;
+use Prooph\EventStore\Exception\RuntimeException;
 use Prooph\EventStore\Projection\ProjectionStatus;
 use Prooph\EventStore\StreamName;
 
@@ -110,7 +111,16 @@ class ProjectionExecutor
         if ($this->projectionRunningConfiguration->isTestingSetup()) {
             usleep(40);
         }
-        $projection->run(false);
+        try {
+            $projection->run(false);
+        }catch (RuntimeException $exception) {
+            if (!str_contains($exception->getMessage(), "Another projection process is already running")) {
+                throw $exception;
+            }
+
+            sleep(1);
+            $projection->run(false);
+        }
 
         if ($status === ProjectionStatus::DELETING_INCL_EMITTED_EVENTS && $projectHasRelatedStream) {
             $projectionStreamName = new StreamName(LazyProophProjectionManager::getProjectionStreamName($projection->getName()));
