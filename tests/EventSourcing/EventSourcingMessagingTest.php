@@ -21,13 +21,14 @@ abstract class EventSourcingMessagingTest extends TestCase
 
     protected function setUp(): void
     {
-//        it does not work under transaction?
         $this->getConnectionFactory()->createContext()->getDbalConnection()->beginTransaction();
     }
 
     protected function tearDown(): void
     {
-        $this->getConnectionFactory()->createContext()->getDbalConnection()->rollBack();
+        try {
+            $this->getConnectionFactory()->createContext()->getDbalConnection()->rollBack();
+        }catch (\Exception) {}
     }
 
     public function getConnectionFactory(bool $isRegistry = false) : ConnectionFactory
