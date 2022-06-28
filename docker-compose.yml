@@ -19,6 +19,17 @@ services:
     environment:
       POSTGRES_USER: "ecotone"
       POSTGRES_PASSWORD: "secret"
+  database-mysql:
+    image: mysql:8.0
+    networks:
+      - default
+    environment:
+      MYSQL_ROOT_PASSWORD: "secret"
+      MYSQL_USER: "ecotone"
+      MYSQL_PASSWORD: "secret"
+      MYSQL_DATABASE: "ecotone"
+    ports:
+      - "3306:3306"
 networks:
   default:
     external:

@@ -11,6 +11,21 @@ jobs:
 #        operating-system: [ ubuntu-latest, windows-latest, macOS-latest ]
         php-versions: [ '8.0', '8.1' ]
     services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: "secret"
+          MYSQL_USER: "ecotone"
+          MYSQL_PASSWORD: "secret"
+          MYSQL_DATABASE: "ecotone"
+          DB_PORT: 3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+        ports:
+          - 3306:3306
       database:
         image: postgres
         env:
@@ -23,8 +38,6 @@ jobs:
           --health-retries 5
         ports:
           - 5432:5432
-    env:
-      DATABASE_DSN: pgsql://ecotone:secret@localhost:5432/ecotone
     steps:
     - name: Setup PHP
       uses: shivammathur/setup-php@v2
@@ -48,11 +61,28 @@ jobs:
     - name: Install dependencies
       run: composer install --prefer-dist --no-progress
 
-    - name: Test PHPUnit
+    - name: Test PHPUnit on postgres
       run: vendor/bin/phpunit
+      env:
+        DATABASE_DSN: pgsql://ecotone:secret@localhost:5432/ecotone
 
     - name: Test Behat
       run: vendor/bin/behat --stop-on-failure
+      env:
+        DATABASE_DSN: pgsql://ecotone:secret@localhost:5432/ecotone
+
+    - name: Verify MySQL connection
+      run: mysql --host 127.0.0.1 --port 3306 -uecotone -psecret -e "SHOW DATABASES"
+
+    - name: Test PHPUnit on Mysql
+      run: vendor/bin/phpunit
+      env:
+        DATABASE_DSN: mysql://ecotone:secret@127.0.0.1:3306/ecotone
+
+    - name: Test Behat on Mysql
+      run: vendor/bin/behat
+      env:
+        DATABASE_DSN: mysql://ecotone:secret@127.0.0.1:3306/ecotone
 
     - name: Test PHPStan
       run: vendor/bin/phpstan
