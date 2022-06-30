@@ -1,23 +1,18 @@
 <?php
 
-
 namespace Ecotone\EventSourcing;
 
-
-use Doctrine\DBAL\Driver\PDOConnection;
+use Doctrine\DBAL\Connection;
 use Ecotone\Dbal\DbalReconnectableConnectionFactory;
 use Ecotone\EventSourcing\PersistenceStrategy\InterlopMariaDbSimpleStreamStrategy;
 use Ecotone\EventSourcing\PersistenceStrategy\InterlopMysqlSimpleStreamStrategy;
-use Ecotone\Messaging\Handler\InMemoryReferenceSearchService;
 use Ecotone\Messaging\Handler\ReferenceSearchService;
 use Ecotone\Messaging\Support\Assert;
 use Ecotone\Messaging\Support\InvalidArgumentException;
-use Enqueue\Dbal\DbalConnectionFactory;
 use Iterator;
 use Prooph\Common\Messaging\MessageConverter;
 use Prooph\Common\Messaging\MessageFactory;
 use Prooph\EventStore\EventStore;
-use Prooph\EventStore\InMemoryEventStore;
 use Prooph\EventStore\Metadata\MetadataMatcher;
 use Prooph\EventStore\Pdo\MariaDbEventStore;
 use Prooph\EventStore\Pdo\MySqlEventStore;
@@ -142,7 +137,7 @@ class LazyProophEventStore implements EventStore
             return;
         }
 
-        $sm = $this->getConnection()->getSchemaManager();
+        $sm = $this->getConnection()->createSchemaManager();
         if (!$sm->tablesExist([$this->eventSourcingConfiguration->getEventStreamTableName()])) {
             match ($this->getEventStoreType()) {
                 self::EVENT_STORE_TYPE_POSTGRES => $this->createPostgresEventStreamTable(),
@@ -262,37 +257,18 @@ class LazyProophEventStore implements EventStore
         return $eventStoreType;
     }
 
-    public function getConnection(): \Doctrine\DBAL\Connection
+    public function getConnection(): Connection
     {
         $connectionFactory = new DbalReconnectableConnectionFactory($this->referenceSearchService->get($this->eventSourcingConfiguration->getConnectionReferenceName()));
 
         return $connectionFactory->getConnection();
     }
 
-    /** @phpstan-ignore-next-line */
-    public function getWrappedConnection(): PDOConnection|\PDO
+    public function getWrappedConnection(): \PDO
     {
-        $connection = $this->getConnection()->getWrappedConnection();
+        $connection = $this->getConnection()->getNativeConnection();
 
-        if ($connection instanceof \PDO || is_subclass_of($connection, "Doctrine\DBAL\Driver\PDOConnection") || get_class($connection) === "Doctrine\DBAL\Driver\PDOConnection") {
-            return $connection;
-        }
-
-        if ($this->isDbalVersionThreeOrHigher($connection)) {
-            $reflectionClass = new \ReflectionClass($connection);
-
-            foreach ($reflectionClass->getProperties() as $property) {
-                foreach (DbalReconnectableConnectionFactory::CONNECTION_PROPERTIES as $connectionPropertyName) {
-                    if ($property->getName() === $connectionPropertyName) {
-                        $pdoConnection = $reflectionClass->getProperty($connectionPropertyName);
-                        $pdoConnection->setAccessible(true);
-
-                        return $pdoConnection->getValue($connection);
-                    }
-                }
-            }
-            Assert::isTrue(false, "Did not found connection property in " . $reflectionClass->getName());
-        }
+        Assert::isSubclassOf($connection, \PDO::class, "Did not found connection");
 
         return $connection;
     }
@@ -397,14 +373,5 @@ CREATE TABLE projections (
 );
 SQL
         );
-    }
-
-    /**
-     * @param \Doctrine\DBAL\Driver\Connection|null $connection
-     * @return bool
-     */
-    private function isDbalVersionThreeOrHigher(?\Doctrine\DBAL\Driver\Connection $connection): bool
-    {
-        return $connection instanceof \Doctrine\DBAL\Driver\PDO\Connection;
     }
 }
