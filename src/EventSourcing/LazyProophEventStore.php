@@ -272,29 +272,19 @@ class LazyProophEventStore implements EventStore
     /** @phpstan-ignore-next-line */
     public function getWrappedConnection(): PDOConnection|\PDO
     {
-        $connection = $this->getConnection()->getWrappedConnection();
+        try {
+            return $this->getConnection()->getNativeConnection();
+        }catch (\LogicException) {
+            /** Case when getNativeConnection is not implemented in nested connection */
+            $connection = $this->getConnection()->getWrappedConnection();
 
-        if ($connection instanceof \PDO || is_subclass_of($connection, "Doctrine\DBAL\Driver\PDOConnection") || get_class($connection) === "Doctrine\DBAL\Driver\PDOConnection") {
-            return $connection;
-        }
-
-        if ($this->isDbalVersionThreeOrHigher($connection)) {
-            $reflectionClass = new \ReflectionClass($connection);
-
-            foreach ($reflectionClass->getProperties() as $property) {
-                foreach (DbalReconnectableConnectionFactory::CONNECTION_PROPERTIES as $connectionPropertyName) {
-                    if ($property->getName() === $connectionPropertyName) {
-                        $pdoConnection = $reflectionClass->getProperty($connectionPropertyName);
-                        $pdoConnection->setAccessible(true);
-
-                        return $pdoConnection->getValue($connection);
-                    }
-                }
+            if ($connection instanceof \PDO || is_subclass_of($connection, "Doctrine\DBAL\Driver\PDOConnection") || get_class($connection) === "Doctrine\DBAL\Driver\PDOConnection") {
+                return $connection;
             }
-            Assert::isTrue(false, "Did not found connection property in " . $reflectionClass->getName());
-        }
 
-        return $connection;
+            /** Laravel case @look Illuminate\Database\PDO\Connection */
+            return $connection->getWrappedConnection();
+        }
     }
 
     private function createMysqlEventStreamTable() : void
