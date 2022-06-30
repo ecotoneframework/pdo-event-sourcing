@@ -69,7 +69,15 @@ class DomainContext extends TestCase implements Context
      */
     public function iActiveMessagingForNamespaces(TableNode $table)
     {
-        $this->prepareMessaging($table->getColumn(0));
+        $this->prepareMessaging($table->getColumn(0), true);
+    }
+
+    /**
+     * @Given I active messaging for namespaces with fail fast false
+     */
+    public function iActiveMessagingForNamespacesWithFailFastFalse(TableNode $table)
+    {
+        $this->prepareMessaging($table->getColumn(0), false);
     }
 
     private function getCommandBus(): CommandBus
@@ -197,7 +205,7 @@ class DomainContext extends TestCase implements Context
         }
     }
 
-    private function prepareMessaging(array $namespaces): void
+    private function prepareMessaging(array $namespaces, bool $failFast): void
     {
         $dbalConnectionFactory = new DbalConnectionFactory(["dsn" => getenv("DATABASE_DSN") ? getenv("DATABASE_DSN") : null]);
         $managerRegistryConnectionFactory = CachedConnectionFactory::createFor(new DbalReconnectableConnectionFactory($dbalConnectionFactory));
@@ -292,6 +300,7 @@ class DomainContext extends TestCase implements Context
             ServiceConfiguration::createWithDefaults()
                 ->withEnvironment("prod")
                 ->withNamespaces($namespaces)
+                ->withFailFast($failFast)
                 ->withCacheDirectoryPath(sys_get_temp_dir() . DIRECTORY_SEPARATOR . Uuid::uuid4()->toString()),
             [
                 "isPostgres" => $dbalConnectionFactory->createContext()->getDbalConnection()->getDriver() instanceof Driver
