@@ -3,7 +3,6 @@
 namespace Ecotone\EventSourcing\Config\InboundChannelAdapter;
 
 use Ecotone\EventSourcing\EventSourcingConfiguration;
-use Ecotone\EventSourcing\ProjectionRunningConfiguration;
 use Ecotone\EventSourcing\ProjectionSetupConfiguration;
 use Ecotone\EventSourcing\Prooph\LazyProophEventStore;
 use Ecotone\EventSourcing\Prooph\LazyProophProjectionManager;
@@ -25,7 +24,6 @@ class ProjectionExecutorBuilder extends InputOutputMessageHandlerBuilder impleme
     public function __construct(
         private ProjectionSetupConfiguration $projectionSetupConfiguration,
         private array $projectSetupConfigurations,
-        private ProjectionRunningConfiguration $projectionRunningConfiguration,
         private string $methodName
     ) {
     }
@@ -47,7 +45,6 @@ class ProjectionExecutorBuilder extends InputOutputMessageHandlerBuilder impleme
                     Reference::to(LazyProophEventStore::class),
                 ]),
                 $this->projectionSetupConfiguration,
-                $this->projectionRunningConfiguration,
                 Reference::to(ConversionService::REFERENCE_NAME),
             ]
         );
