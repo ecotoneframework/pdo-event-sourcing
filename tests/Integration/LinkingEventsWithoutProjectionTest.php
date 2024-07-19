@@ -21,6 +21,10 @@ use Test\Ecotone\EventSourcing\Fixture\Ticket\TicketEventConverter;
 /**
  * @internal
  */
+/**
+ * licence Apache-2.0
+ * @internal
+ */
 final class LinkingEventsWithoutProjectionTest extends EventSourcingMessagingTestCase
 {
     public function test_linking_events(): void

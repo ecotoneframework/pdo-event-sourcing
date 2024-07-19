@@ -19,6 +19,10 @@ use Test\Ecotone\EventSourcing\Fixture\TicketWithPollingProjection\ProjectionCon
 /**
  * @internal
  */
+/**
+ * licence Apache-2.0
+ * @internal
+ */
 final class GapDetectionTest extends EventSourcingMessagingTestCase
 {
     public function test_detecting_gaps(): void

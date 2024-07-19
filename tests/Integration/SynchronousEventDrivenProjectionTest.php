@@ -26,6 +26,10 @@ use Test\Ecotone\EventSourcing\Fixture\TicketWithSynchronousEventDrivenProjectio
 /**
  * @internal
  */
+/**
+ * licence Apache-2.0
+ * @internal
+ */
 final class SynchronousEventDrivenProjectionTest extends EventSourcingMessagingTestCase
 {
     public function test_building_synchronous_event_driven_projection(): void

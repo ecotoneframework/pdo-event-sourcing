@@ -27,6 +27,10 @@ use Test\Ecotone\EventSourcing\Fixture\Ticket\TicketEventConverter;
 /**
  * @internal
  */
+/**
+ * licence Apache-2.0
+ * @internal
+ */
 final class SnapshotsTest extends EventSourcingMessagingTestCase
 {
     public function test_snapshotting_aggregates_called_in_turn(): void

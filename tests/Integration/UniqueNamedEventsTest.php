@@ -15,6 +15,10 @@ use Test\Ecotone\EventSourcing\Fixture\Ticket\Ticket;
 /**
  * @internal
  */
+/**
+ * licence Apache-2.0
+ * @internal
+ */
 final class UniqueNamedEventsTest extends TestCase
 {
     public function test_event_names_should_be_unique(): void

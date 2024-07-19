@@ -22,6 +22,10 @@ use Test\Ecotone\EventSourcing\Fixture\TicketProjectionState\TicketCounterProjec
 /**
  * @internal
  */
+/**
+ * licence Apache-2.0
+ * @internal
+ */
 final class ProjectionWithStateTest extends EventSourcingMessagingTestCase
 {
     public function test_projection_should_be_able_to_keep_the_state_between_runs(): void

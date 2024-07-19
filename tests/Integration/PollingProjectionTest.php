@@ -26,6 +26,10 @@ use Test\Ecotone\EventSourcing\Fixture\TicketWithPollingProjection\ProjectionCon
 /**
  * @internal
  */
+/**
+ * licence Apache-2.0
+ * @internal
+ */
 final class PollingProjectionTest extends EventSourcingMessagingTestCase
 {
     public function test_building_polling_projection(): void
