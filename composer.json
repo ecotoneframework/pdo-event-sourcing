@@ -33,14 +33,13 @@
         }
     },
     "require": {
-        "ecotone/dbal": "~1.225.0",
+        "ecotone/dbal": "~1.226.0",
         "prooph/pdo-event-store": "^1.15.1"
     },
     "require-dev": {
-        "phpunit/phpunit": "^9.5",
+        "phpunit/phpunit": "^9.6",
         "phpstan/phpstan": "^1.8",
-        "psr/container": "^2.0",
-        "wikimedia/composer-merge-plugin": "^2.0"
+        "wikimedia/composer-merge-plugin": "^2.1"
     },
     "scripts": {
         "tests:phpstan": "vendor/bin/phpstan",
@@ -52,7 +51,7 @@
     },
     "extra": {
         "branch-alias": {
-            "dev-main": "1.225.0-dev"
+            "dev-main": "1.226.0-dev"
         },
         "ecotone": {
             "repository": "pdo-event-sourcing"

@@ -68,7 +68,6 @@ use Ecotone\Messaging\Handler\Transformer\TransformerBuilder;
 use Ecotone\Messaging\Handler\TypeDescriptor;
 use Ecotone\Messaging\Support\Assert;
 use Ecotone\Modelling\Attribute\EventHandler;
-use Ecotone\Modelling\Attribute\IgnorePayload;
 use Ecotone\Modelling\Attribute\NamedEvent;
 use Ecotone\Modelling\Config\BusModule;
 use Ecotone\Modelling\Config\ModellingHandlerModule;
@@ -189,7 +188,7 @@ class EventSourcingModule extends NoExternalConfigurationModule
                         )
                             ->withInputChannelName($requestChannel)
                             ->withMethodParameterConverters(
-                                $parameterConverterFactory->createParameterWithDefaults($interfaceToCall, (bool)$interfaceToCall->hasMethodAnnotation(TypeDescriptor::create(IgnorePayload::class)))
+                                $parameterConverterFactory->createParameterWithDefaults($interfaceToCall)
                             );
                     }
                     if ($attributeType->equals($projectionDelete)) {
@@ -201,7 +200,7 @@ class EventSourcingModule extends NoExternalConfigurationModule
                         )
                             ->withInputChannelName($requestChannel)
                             ->withMethodParameterConverters(
-                                $parameterConverterFactory->createParameterWithDefaults($interfaceToCall, (bool)$interfaceToCall->hasMethodAnnotation(TypeDescriptor::create(IgnorePayload::class)))
+                                $parameterConverterFactory->createParameterWithDefaults($interfaceToCall)
                             );
                     }
                     if ($attributeType->equals($projectionReset)) {
@@ -213,7 +212,7 @@ class EventSourcingModule extends NoExternalConfigurationModule
                         )
                             ->withInputChannelName($requestChannel)
                             ->withMethodParameterConverters(
-                                $parameterConverterFactory->createParameterWithDefaults($interfaceToCall, (bool)$interfaceToCall->hasMethodAnnotation(TypeDescriptor::create(IgnorePayload::class)))
+                                $parameterConverterFactory->createParameterWithDefaults($interfaceToCall)
                             );
                     }
                 }
