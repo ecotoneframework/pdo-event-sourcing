@@ -5,14 +5,13 @@ namespace Ecotone\EventSourcing\Prooph;
 use ArrayIterator;
 use DateTimeImmutable;
 use DateTimeZone;
-use Ecotone\EventSourcing\EventMapper;
 use Ecotone\EventSourcing\EventStore;
+use Ecotone\EventSourcing\ProophEventMapper;
 use Ecotone\Messaging\Conversion\ConversionService;
 use Ecotone\Messaging\Conversion\MediaType;
 use Ecotone\Messaging\Handler\TypeDescriptor;
 use Ecotone\Messaging\MessageHeaders;
 use Ecotone\Modelling\Event;
-use Ecotone\Test\InMemoryConversionService;
 use Iterator;
 use Prooph\EventStore\EventStore as ProophEventStore;
 use Prooph\EventStore\Metadata\MetadataMatcher;
@@ -27,23 +26,18 @@ class EcotoneEventStoreProophWrapper implements EventStore
 {
     private LazyProophEventStore $eventStore;
     private ConversionService $conversionService;
-    private EventMapper $eventMapper;
+    private ProophEventMapper $eventMapper;
 
-    private function __construct(LazyProophEventStore $eventStore, ConversionService $conversionService, EventMapper $eventMapper)
+    private function __construct(LazyProophEventStore $eventStore, ConversionService $conversionService, ProophEventMapper $eventMapper)
     {
         $this->eventStore = $eventStore;
         $this->conversionService = $conversionService;
         $this->eventMapper = $eventMapper;
     }
 
-    public static function prepare(LazyProophEventStore $eventStore, ConversionService $conversionService, EventMapper $eventMapper): static
+    public static function prepare(LazyProophEventStore $eventStore, ConversionService $conversionService, ProophEventMapper $eventMapper): static
     {
         return new self($eventStore, $conversionService, $eventMapper);
-    }
-
-    public static function prepareWithNoConversions(LazyProophEventStore $eventStore): static
-    {
-        return new self($eventStore, InMemoryConversionService::createWithoutConversion(), EventMapper::createEmpty());
     }
 
     /**

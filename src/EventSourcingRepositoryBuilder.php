@@ -8,7 +8,6 @@ use Ecotone\Messaging\Config\Container\Definition;
 use Ecotone\Messaging\Config\Container\MessagingContainerBuilder;
 use Ecotone\Messaging\Config\Container\Reference;
 use Ecotone\Messaging\Conversion\ConversionService;
-use Ecotone\Messaging\MessageConverter\DefaultHeaderMapper;
 use Ecotone\Modelling\RepositoryBuilder;
 
 /**
@@ -17,17 +16,15 @@ use Ecotone\Modelling\RepositoryBuilder;
 final class EventSourcingRepositoryBuilder implements RepositoryBuilder
 {
     private array $handledAggregateClassNames = [];
-    private array $headerMapper = [];
-    private EventSourcingConfiguration $eventSourcingConfiguration;
 
-    private function __construct(EventSourcingConfiguration $eventSourcingConfiguration)
+    private function __construct()
     {
-        $this->eventSourcingConfiguration = $eventSourcingConfiguration;
+
     }
 
-    public static function create(EventSourcingConfiguration $eventSourcingConfiguration): static
+    public static function create(): static
     {
-        return new static($eventSourcingConfiguration);
+        return new static();
     }
 
     public function canHandle(string $aggregateClassName): bool
@@ -42,13 +39,6 @@ final class EventSourcingRepositoryBuilder implements RepositoryBuilder
         return $this;
     }
 
-    public function withMetadataMapper(string $headerMapper): self
-    {
-        $this->headerMapper = explode(',', $headerMapper);
-
-        return $this;
-    }
-
     public function isEventSourced(): bool
     {
         return true;
@@ -56,28 +46,16 @@ final class EventSourcingRepositoryBuilder implements RepositoryBuilder
 
     public function compile(MessagingContainerBuilder $builder): Definition
     {
-        $headerMapper = $this->headerMapper
-            ? DefaultHeaderMapper::createWith($this->headerMapper, $this->headerMapper)
-            : DefaultHeaderMapper::createAllHeadersMapping();
-
-        $documentStoreReferences = [];
-        foreach ($this->eventSourcingConfiguration->getSnapshotsConfig() as $aggregateClass => $config) {
-            $documentStoreReferences[$aggregateClass] = new Reference($config['documentStore']);
-        }
-
         return new Definition(EventSourcingRepository::class, [
             new Definition(EcotoneEventStoreProophWrapper::class, [
                 new Reference(LazyProophEventStore::class),
                 new Reference(ConversionService::REFERENCE_NAME),
-                new Reference(EventMapper::class),
+                new Reference(ProophEventMapper::class),
             ], 'prepare'),
             $this->handledAggregateClassNames,
-            $headerMapper,
             new Reference(EventSourcingConfiguration::class),
             new Reference(AggregateStreamMapping::class),
             new Reference(AggregateTypeMapping::class),
-            $documentStoreReferences,
-            new Reference(ConversionService::REFERENCE_NAME),
         ]);
     }
 }
