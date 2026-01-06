@@ -6,6 +6,7 @@ namespace Ecotone\EventSourcing\Attribute;
 
 use Attribute;
 use Ecotone\EventSourcing\EventStore;
+use Ecotone\Modelling\Attribute\EventSourcingAggregate;
 
 /*
  * Configures a projection to read from an aggregate's event stream.
@@ -23,7 +24,7 @@ use Ecotone\EventSourcing\EventStore;
  *
  * licence Enterprise
  */
-#[Attribute(Attribute::TARGET_CLASS)]
+#[Attribute(Attribute::TARGET_CLASS | Attribute::IS_REPEATABLE)]
 class FromAggregateStream
 {
     /**
