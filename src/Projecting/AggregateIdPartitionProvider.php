@@ -16,14 +16,26 @@ use Ecotone\EventSourcing\PdoStreamTableNameProvider;
 use Ecotone\Projecting\PartitionProvider;
 use Ecotone\Projecting\StreamFilter;
 use Enqueue\Dbal\DbalConnectionFactory;
+
+use function in_array;
+
 use RuntimeException;
 
 class AggregateIdPartitionProvider implements PartitionProvider
 {
+    /**
+     * @param array<string> $partitionedProjections List of projection names this provider handles
+     */
     public function __construct(
         private DbalConnectionFactory|MultiTenantConnectionFactory $connectionFactory,
-        private PdoStreamTableNameProvider $tableNameProvider
+        private PdoStreamTableNameProvider $tableNameProvider,
+        private array $partitionedProjections = [],
     ) {
+    }
+
+    public function canHandle(string $projectionName): bool
+    {
+        return in_array($projectionName, $this->partitionedProjections, true);
     }
 
     public function count(StreamFilter $filter): int
