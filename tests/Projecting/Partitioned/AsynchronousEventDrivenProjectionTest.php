@@ -16,7 +16,6 @@ use Ecotone\Messaging\Attribute\Asynchronous;
 use Ecotone\Messaging\Channel\SimpleMessageChannelBuilder;
 use Ecotone\Messaging\Config\ModulePackageList;
 use Ecotone\Messaging\Config\ServiceConfiguration;
-use Ecotone\Messaging\MessageHeaders;
 use Ecotone\Modelling\Attribute\EventHandler;
 use Ecotone\Modelling\Attribute\QueryHandler;
 use Ecotone\Projecting\Attribute\Partitioned;
@@ -232,7 +231,7 @@ final class AsynchronousEventDrivenProjectionTest extends ProjectingTestCase
     {
         $connection = $this->getConnection();
 
-        return new #[ProjectionV2(self::NAME), Partitioned(MessageHeaders::EVENT_AGGREGATE_ID), Asynchronous(self::CHANNEL), FromStream(stream: Ticket::class, aggregateType: Ticket::class)] class ($connection) {
+        return new #[ProjectionV2(self::NAME), Partitioned, Asynchronous(self::CHANNEL), FromStream(stream: Ticket::class, aggregateType: Ticket::class)] class ($connection) {
             public const NAME = 'async_ticket_list_partitioned';
             public const CHANNEL = 'async_projection_partitioned';
 

@@ -12,7 +12,6 @@ use Ecotone\Lite\EcotoneLite;
 use Ecotone\Messaging\Config\ConfigurationException;
 use Ecotone\Messaging\Config\ModulePackageList;
 use Ecotone\Messaging\Config\ServiceConfiguration;
-use Ecotone\Messaging\MessageHeaders;
 use Ecotone\Modelling\Attribute\EventHandler;
 use Ecotone\Projecting\Attribute\Partitioned;
 use Ecotone\Projecting\Attribute\ProjectionV2;
@@ -150,7 +149,7 @@ class EventNameFilteringTest extends EventSourcingMessagingTestCase
 
     private function getProjectionHandlingAllEvents(): object
     {
-        return new #[ProjectionV2('projection_all_events'), Partitioned(MessageHeaders::EVENT_AGGREGATE_ID), FromStream(stream: MultiEventAggregate::STREAM_NAME, aggregateType: MultiEventAggregate::class)] class {
+        return new #[ProjectionV2('projection_all_events'), Partitioned, FromStream(stream: MultiEventAggregate::STREAM_NAME, aggregateType: MultiEventAggregate::class)] class {
             public array $events = [];
 
             #[EventHandler]
@@ -169,7 +168,7 @@ class EventNameFilteringTest extends EventSourcingMessagingTestCase
 
     private function getProjectionHandlingOnlyOneEvent(): object
     {
-        return new #[ProjectionV2('projection_one_event'), Partitioned(MessageHeaders::EVENT_AGGREGATE_ID), FromStream(stream: MultiEventAggregate::STREAM_NAME, aggregateType: MultiEventAggregate::class)] class {
+        return new #[ProjectionV2('projection_one_event'), Partitioned, FromStream(stream: MultiEventAggregate::STREAM_NAME, aggregateType: MultiEventAggregate::class)] class {
             public array $events = [];
 
             #[EventHandler]
@@ -182,7 +181,7 @@ class EventNameFilteringTest extends EventSourcingMessagingTestCase
 
     private function getProjectionWithCatchAllPattern(): object
     {
-        return new #[ProjectionV2('projection_catch_all'), Partitioned(MessageHeaders::EVENT_AGGREGATE_ID), FromStream(stream: MultiEventAggregate::STREAM_NAME, aggregateType: MultiEventAggregate::class)] class {
+        return new #[ProjectionV2('projection_catch_all'), Partitioned, FromStream(stream: MultiEventAggregate::STREAM_NAME, aggregateType: MultiEventAggregate::class)] class {
             public array $events = [];
 
             #[EventHandler('*')]
@@ -195,7 +194,7 @@ class EventNameFilteringTest extends EventSourcingMessagingTestCase
 
     private function getProjectionWithObjectType(): object
     {
-        return new #[ProjectionV2('projection_object_type'), Partitioned(MessageHeaders::EVENT_AGGREGATE_ID), FromStream(stream: MultiEventAggregate::STREAM_NAME, aggregateType: MultiEventAggregate::class)] class {
+        return new #[ProjectionV2('projection_object_type'), Partitioned, FromStream(stream: MultiEventAggregate::STREAM_NAME, aggregateType: MultiEventAggregate::class)] class {
             public array $events = [];
 
             #[EventHandler]
@@ -208,7 +207,7 @@ class EventNameFilteringTest extends EventSourcingMessagingTestCase
 
     private function getProjectionWithClassTypeResolvingToNamedEvent(): object
     {
-        return new #[ProjectionV2('projection_class_type'), Partitioned(MessageHeaders::EVENT_AGGREGATE_ID), FromStream(stream: MultiEventAggregate::STREAM_NAME, aggregateType: MultiEventAggregate::class)] class {
+        return new #[ProjectionV2('projection_class_type'), Partitioned, FromStream(stream: MultiEventAggregate::STREAM_NAME, aggregateType: MultiEventAggregate::class)] class {
             public array $events = [];
 
             #[EventHandler]
@@ -221,7 +220,7 @@ class EventNameFilteringTest extends EventSourcingMessagingTestCase
 
     private function getProjectionWithUnionType(): object
     {
-        return new #[ProjectionV2('projection_union_type'), Partitioned(MessageHeaders::EVENT_AGGREGATE_ID), FromStream(stream: MultiEventAggregate::STREAM_NAME, aggregateType: MultiEventAggregate::class)] class {
+        return new #[ProjectionV2('projection_union_type'), Partitioned, FromStream(stream: MultiEventAggregate::STREAM_NAME, aggregateType: MultiEventAggregate::class)] class {
             public array $events = [];
 
             #[EventHandler]
@@ -234,7 +233,7 @@ class EventNameFilteringTest extends EventSourcingMessagingTestCase
 
     private function getProjectionWithGlobPattern(): object
     {
-        return new #[ProjectionV2('projection_glob_pattern'), Partitioned(MessageHeaders::EVENT_AGGREGATE_ID), FromStream(stream: MultiEventAggregate::STREAM_NAME, aggregateType: MultiEventAggregate::class)] class {
+        return new #[ProjectionV2('projection_glob_pattern'), Partitioned, FromStream(stream: MultiEventAggregate::STREAM_NAME, aggregateType: MultiEventAggregate::class)] class {
             public array $events = [];
 
             #[EventHandler('order.*')]

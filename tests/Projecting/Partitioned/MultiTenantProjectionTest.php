@@ -21,7 +21,6 @@ use Ecotone\Messaging\Channel\SimpleMessageChannelBuilder;
 use Ecotone\Messaging\Config\ModulePackageList;
 use Ecotone\Messaging\Config\ServiceConfiguration;
 use Ecotone\Messaging\Endpoint\PollingMetadata;
-use Ecotone\Messaging\MessageHeaders;
 use Ecotone\Modelling\Attribute\EventHandler;
 use Ecotone\Modelling\Attribute\QueryHandler;
 use Ecotone\Projecting\Attribute\Partitioned;
@@ -200,7 +199,7 @@ final class MultiTenantProjectionTest extends ProjectingTestCase
 
     private function createMultiTenantProjection(): object
     {
-        return new #[ProjectionV2('multi_tenant_partitioned_projection'), Partitioned(MessageHeaders::EVENT_AGGREGATE_ID), FromStream(stream: Ticket::class, aggregateType: Ticket::class)] class () {
+        return new #[ProjectionV2('multi_tenant_partitioned_projection'), Partitioned, FromStream(stream: Ticket::class, aggregateType: Ticket::class)] class () {
             #[QueryHandler('getInProgressTickets')]
             public function getTickets(#[Reference(DbalConnectionFactory::class)] ConnectionFactory $connectionFactory): array
             {
@@ -261,7 +260,7 @@ final class MultiTenantProjectionTest extends ProjectingTestCase
 
     private function createAsyncMultiTenantProjection(): object
     {
-        return new #[Asynchronous('async_projection_channel'), ProjectionV2('async_multi_tenant_partitioned_projection'), Partitioned(MessageHeaders::EVENT_AGGREGATE_ID), FromStream(stream: Ticket::class, aggregateType: Ticket::class)] class () {
+        return new #[Asynchronous('async_projection_channel'), ProjectionV2('async_multi_tenant_partitioned_projection'), Partitioned, FromStream(stream: Ticket::class, aggregateType: Ticket::class)] class () {
             #[QueryHandler('getInProgressTickets')]
             public function getTickets(#[Reference(DbalConnectionFactory::class)] ConnectionFactory $connectionFactory): array
             {
