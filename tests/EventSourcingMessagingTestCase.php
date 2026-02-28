@@ -128,10 +128,6 @@ abstract class EventSourcingMessagingTestCase extends TestCase
         }
     }
 
-    /**
-     * @dataProvider enterpriseMode
-     * @return iterable<string, array>
-     */
     public static function enterpriseMode(): iterable
     {
         yield 'Open Core' => [false];
