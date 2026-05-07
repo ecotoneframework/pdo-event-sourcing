@@ -9,6 +9,7 @@ use Ecotone\EventSourcing\EventSourcingConfiguration;
 use Ecotone\Lite\EcotoneLite;
 use Ecotone\Messaging\Config\ModulePackageList;
 use Ecotone\Messaging\Config\ServiceConfiguration;
+use Ecotone\Messaging\Endpoint\ExecutionPollingMetadata;
 use Ecotone\Messaging\Support\InvalidArgumentException;
 use Test\Ecotone\EventSourcing\EventSourcingMessagingTestCase;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Command\CloseTicket;
@@ -61,7 +62,10 @@ final class MultiTenantTest extends EventSourcingMessagingTestCase
             new RegisterTicket('122', 'Johnny', 'alert'),
             metadata: ['tenant' => 'tenant_b']
         );
-        $ecotone->run(InProgressTicketList::PROJECTION_CHANNEL);
+        $ecotone->run(InProgressTicketList::PROJECTION_CHANNEL, ExecutionPollingMetadata::createWithTestingSetup(
+            amountOfMessagesToHandle: 2,
+            maxExecutionTimeInMilliseconds: 5000,
+        ));
 
         self::assertEquals(
             [['ticket_id' => '123', 'ticket_type' => 'alert']],
@@ -81,7 +85,10 @@ final class MultiTenantTest extends EventSourcingMessagingTestCase
             metadata: ['tenant' => 'tenant_a']
         );
 
-        $ecotone->run(InProgressTicketList::PROJECTION_CHANNEL);
+        $ecotone->run(InProgressTicketList::PROJECTION_CHANNEL, ExecutionPollingMetadata::createWithTestingSetup(
+            amountOfMessagesToHandle: 2,
+            maxExecutionTimeInMilliseconds: 5000,
+        ));
 
         self::assertEquals(
             [],
