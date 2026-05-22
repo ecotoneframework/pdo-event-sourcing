@@ -16,10 +16,19 @@
         }
     ],
     "keywords": [
-        "dbal",
-        "ecotone"
+        "ecotone",
+        "event-sourcing",
+        "event-store",
+        "event-sourced-saga",
+        "durable-workflows",
+        "projections",
+        "cqrs",
+        "ddd",
+        "postgresql",
+        "mysql",
+        "pdo"
     ],
-    "description": "PDO-backed Event Store for Ecotone — event-sourced aggregates, projections, upcasting, and streaming projections (Kafka, RabbitMQ).",
+    "description": "PDO-backed Event Store for Ecotone — event-sourced aggregates, event-sourced sagas (durable workflows), projections, upcasting, and streaming projections (Kafka, RabbitMQ) on PostgreSQL or MySQL.",
     "autoload": {
         "psr-4": {
             "Ecotone\\EventSourcing\\": "src"
@@ -33,7 +42,7 @@
         }
     },
     "require": {
-        "ecotone/dbal": "~1.313.1",
+        "ecotone/dbal": "~1.313.2",
         "prooph/pdo-event-store": "^1.16.3"
     },
     "require-dev": {
@@ -55,7 +64,7 @@
     },
     "extra": {
         "branch-alias": {
-            "dev-main": "1.313.1-dev"
+            "dev-main": "1.313.2-dev"
         },
         "ecotone": {
             "repository": "pdo-event-sourcing"
@@ -71,6 +80,6 @@
                 "description": "Allows to use Enterprise features of Ecotone. For more information please write to support@simplycodedsoftware.com"
             }
         },
-        "release-time": "2026-05-18 19:18:46"
+        "release-time": "2026-05-22 17:45:28"
     }
 }
