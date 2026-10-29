@@ -4,20 +4,17 @@ declare(strict_types=1);
 
 namespace Test\Ecotone\EventSourcing\Fixture\CalendarProjection;
 
-use Ecotone\Api\Attribute\EventHandler;
-use Ecotone\Api\Attribute\QueryHandler;
-use Ecotone\Api\Projecting\FromAggregateStream;
-use Ecotone\Api\Projecting\Projection;
+use Ecotone\EventSourcing\Attribute\Projection;
 use Ecotone\Messaging\Support\Assert;
+use Ecotone\Modelling\Attribute\EventHandler;
+use Ecotone\Modelling\Attribute\QueryHandler;
 use Test\Ecotone\EventSourcing\Fixture\Calendar\CalendarCreated;
 use Test\Ecotone\EventSourcing\Fixture\Calendar\MeetingCreated;
 use Test\Ecotone\EventSourcing\Fixture\Calendar\MeetingScheduled;
 use Test\Ecotone\EventSourcing\Fixture\Calendar\MeetingWithEventSourcing;
 use Test\Ecotone\EventSourcing\Fixture\EventSourcingCalendarWithInternalRecorder\CalendarWithInternalRecorder;
 
-#[Projection('calendar')]
-#[FromAggregateStream(CalendarWithInternalRecorder::class)]
-#[FromAggregateStream(MeetingWithEventSourcing::class)]
+#[Projection('calendar', [CalendarWithInternalRecorder::class, MeetingWithEventSourcing::class])]
 final class CalendarProjection
 {
     private $calendars = [];

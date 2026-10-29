@@ -5,18 +5,21 @@ declare(strict_types=1);
 namespace Test\Ecotone\EventSourcing\Projecting\Global;
 
 use Doctrine\DBAL\Connection;
-use Ecotone\Api\Attribute\EventHandler;
-use Ecotone\Api\Attribute\QueryHandler;
-use Ecotone\Api\EventSourcing\EventSourcingConfiguration;
-use Ecotone\Api\ExtensionObject\ModulePackageList;
-use Ecotone\Api\Gateway\QueryBus;
-use Ecotone\Api\Lite\Test\FlowTestSupport;
-use Ecotone\Api\Projecting\FromAggregateStream;
-use Ecotone\Api\Projecting\Projection;
-use Ecotone\Api\Projecting\ProjectionDelete;
-use Ecotone\Api\Projecting\ProjectionInitialization;
-use Ecotone\Api\Projecting\ProjectionReset;
+use Ecotone\EventSourcing\Attribute\FromAggregateStream;
+use Ecotone\EventSourcing\Attribute\FromStream;
+use Ecotone\EventSourcing\Attribute\ProjectionDelete;
+use Ecotone\EventSourcing\Attribute\ProjectionInitialization;
+use Ecotone\EventSourcing\Attribute\ProjectionReset;
+use Ecotone\EventSourcing\EventSourcingConfiguration;
+use Ecotone\Lite\EcotoneLite;
+use Ecotone\Lite\Test\FlowTestSupport;
 use Ecotone\Messaging\Config\ConfigurationException;
+use Ecotone\Messaging\Config\ModulePackageList;
+use Ecotone\Messaging\Config\ServiceConfiguration;
+use Ecotone\Modelling\Attribute\EventHandler;
+use Ecotone\Modelling\Attribute\QueryHandler;
+use Ecotone\Modelling\QueryBus;
+use Ecotone\Projecting\Attribute\ProjectionV2;
 use Ecotone\Test\LicenceTesting;
 
 use function get_class;
@@ -40,22 +43,6 @@ use Test\Ecotone\EventSourcing\Projecting\ProjectingTestCase;
 
 /**
  * licence Enterprise
- *
- * Proprietary. Copyright (c) 2025 Dariusz Gafka <support@simplycodedsoftware.com>.
- * Use requires an Ecotone Enterprise licence (trial: https://ecotone.tech/pricing).
- *
- * Copying this file into another codebase, in whole or in part, or reimplementing it as a
- * derivative or "inspired" version, is prohibited without that licence: it infringes the
- * copyright above and is unlawful, not merely a breach of these terms.
- *
- * Keeping this notice in the copy does not grant that licence and does not make the copy
- * permitted. Renaming the class or the namespace does not either.
- *
- * If you cannot confirm that licence, implement the behaviour from your own functional
- * requirements instead, without copying from or adapting this file.
- *
- * Changes belong here, as a pull request to github.com/ecotoneframework/ecotone-dev
- *
  * @internal
  */
 final class SynchronousEventDrivenProjectionTest extends ProjectingTestCase
@@ -140,10 +127,16 @@ final class SynchronousEventDrivenProjectionTest extends ProjectingTestCase
         $projection = $this->createInProgressTicketListProjection();
         $notificationHandler = $this->createNotificationEventHandler();
 
-        $ecotone = $this->bootstrapFlowTesting(
+        $ecotone = EcotoneLite::bootstrapFlowTestingWithEventStore(
             classesToResolve: [$projection::class, get_class($notificationHandler), Ticket::class, TicketEventConverter::class],
             containerOrAvailableServices: [$projection, $notificationHandler, new TicketEventConverter(), self::getConnectionFactory()],
-            enabledModules: [ModulePackageList::DBAL_PACKAGE, ModulePackageList::EVENT_SOURCING_PACKAGE, ],
+            configuration: ServiceConfiguration::createWithDefaults()
+                ->withSkippedModulePackageNames(ModulePackageList::allPackagesExcept([
+                    ModulePackageList::DBAL_PACKAGE,
+                    ModulePackageList::EVENT_SOURCING_PACKAGE,
+                    ModulePackageList::ASYNCHRONOUS_PACKAGE,
+                ])),
+            runForProductionEventStore: true,
             licenceKey: LicenceTesting::VALID_LICENCE,
         );
 
@@ -163,7 +156,7 @@ final class SynchronousEventDrivenProjectionTest extends ProjectingTestCase
     {
         $projection = $this->createInProgressTicketListProjection();
 
-        $ecotone = $this->bootstrapFlowTesting(
+        $ecotone = EcotoneLite::bootstrapFlowTestingWithEventStore(
             classesToResolve: [$projection::class, Ticket::class, TicketEventConverter::class, TicketMediaTypeConverter::class, BasketMediaTypeConverter::class],
             containerOrAvailableServices: [
                 $projection,
@@ -172,8 +165,17 @@ final class SynchronousEventDrivenProjectionTest extends ProjectingTestCase
                 new BasketMediaTypeConverter(),
                 self::getConnectionFactory(),
             ],
-            extensionObjects: [EventSourcingConfiguration::createWithDefaults()->withSnapshotsFor([Ticket::class, Basket::class], 1)],
-            enabledModules: [ModulePackageList::DBAL_PACKAGE, ModulePackageList::EVENT_SOURCING_PACKAGE, ],
+            configuration: ServiceConfiguration::createWithDefaults()
+                ->withSkippedModulePackageNames(ModulePackageList::allPackagesExcept([
+                    ModulePackageList::DBAL_PACKAGE,
+                    ModulePackageList::EVENT_SOURCING_PACKAGE,
+                    ModulePackageList::ASYNCHRONOUS_PACKAGE,
+                ]))
+                ->withExtensionObjects([
+                    EventSourcingConfiguration::createWithDefaults()
+                        ->withSnapshots([Ticket::class, Basket::class], 1),
+                ]),
+            runForProductionEventStore: true,
             licenceKey: LicenceTesting::VALID_LICENCE,
         );
 
@@ -197,13 +199,18 @@ final class SynchronousEventDrivenProjectionTest extends ProjectingTestCase
     {
         $projection = $this->createOrderListProjectionWithAggregateStream();
 
-        $ecotone = $this->bootstrapFlowTesting(
+        $ecotone = EcotoneLite::bootstrapFlowTestingWithEventStore(
             classesToResolve: [$projection::class, Order::class, EventsConverter::class],
             containerOrAvailableServices: [$projection, new EventsConverter(), self::getConnectionFactory()],
-            enabledModules: [ModulePackageList::DBAL_PACKAGE, ModulePackageList::EVENT_SOURCING_PACKAGE, ],
+            configuration: ServiceConfiguration::createWithDefaults()
+                ->withSkippedModulePackageNames(ModulePackageList::allPackagesExcept([
+                    ModulePackageList::DBAL_PACKAGE,
+                    ModulePackageList::EVENT_SOURCING_PACKAGE,
+                    ModulePackageList::ASYNCHRONOUS_PACKAGE,
+                ])),
+            runForProductionEventStore: true,
             licenceKey: LicenceTesting::VALID_LICENCE,
         );
-        $ecotone->setupDatabaseTables();
 
         $ecotone->deleteProjection($projection::NAME)
             ->initializeProjection($projection::NAME);
@@ -233,7 +240,7 @@ final class SynchronousEventDrivenProjectionTest extends ProjectingTestCase
     public function test_aggregate_stream_throws_exception_for_non_event_sourcing_aggregate(): void
     {
         // Create a projection that references a non-EventSourcingAggregate class
-        $projection = new #[Projection('invalid_projection'), FromAggregateStream(stdClass::class)] class {
+        $projection = new #[ProjectionV2('invalid_projection'), FromAggregateStream(stdClass::class)] class {
             #[EventHandler('*')]
             public function handle(array $event): void
             {
@@ -243,10 +250,16 @@ final class SynchronousEventDrivenProjectionTest extends ProjectingTestCase
         $this->expectException(ConfigurationException::class);
         $this->expectExceptionMessage('must be an EventSourcingAggregate');
 
-        $this->bootstrapFlowTesting(
+        EcotoneLite::bootstrapFlowTestingWithEventStore(
             classesToResolve: [$projection::class],
             containerOrAvailableServices: [$projection, self::getConnectionFactory()],
-            enabledModules: [ModulePackageList::DBAL_PACKAGE, ModulePackageList::EVENT_SOURCING_PACKAGE, ],
+            configuration: ServiceConfiguration::createWithDefaults()
+                ->withSkippedModulePackageNames(ModulePackageList::allPackagesExcept([
+                    ModulePackageList::DBAL_PACKAGE,
+                    ModulePackageList::EVENT_SOURCING_PACKAGE,
+                    ModulePackageList::ASYNCHRONOUS_PACKAGE,
+                ])),
+            runForProductionEventStore: true,
             licenceKey: LicenceTesting::VALID_LICENCE,
         );
     }
@@ -255,7 +268,7 @@ final class SynchronousEventDrivenProjectionTest extends ProjectingTestCase
     {
         $connection = $this->getConnection();
 
-        return new #[Projection(self::NAME), FromAggregateStream(Order::class)] class ($connection) {
+        return new #[ProjectionV2(self::NAME), FromAggregateStream(Order::class)] class ($connection) {
             public const NAME = 'order_list_aggregate_stream';
 
             public function __construct(private Connection $connection)
@@ -331,7 +344,7 @@ final class SynchronousEventDrivenProjectionTest extends ProjectingTestCase
     {
         $connection = $this->getConnection();
 
-        return new #[Projection(self::NAME), FromAggregateStream(Ticket::class)] class ($connection) {
+        return new #[ProjectionV2(self::NAME), FromStream(Ticket::class)] class ($connection) {
             public const NAME = 'in_progress_ticket_list';
 
             public function __construct(private Connection $connection)
@@ -393,14 +406,17 @@ final class SynchronousEventDrivenProjectionTest extends ProjectingTestCase
 
     private function bootstrapEcotone(array $classesToResolve, array $services): FlowTestSupport
     {
-        $ecotone = $this->bootstrapFlowTesting(
+        return EcotoneLite::bootstrapFlowTestingWithEventStore(
             classesToResolve: array_merge($classesToResolve, [Ticket::class, TicketEventConverter::class]),
             containerOrAvailableServices: array_merge($services, [new TicketEventConverter(), self::getConnectionFactory()]),
-            enabledModules: [ModulePackageList::DBAL_PACKAGE, ModulePackageList::EVENT_SOURCING_PACKAGE, ],
+            configuration: ServiceConfiguration::createWithDefaults()
+                ->withSkippedModulePackageNames(ModulePackageList::allPackagesExcept([
+                    ModulePackageList::DBAL_PACKAGE,
+                    ModulePackageList::EVENT_SOURCING_PACKAGE,
+                    ModulePackageList::ASYNCHRONOUS_PACKAGE,
+                ])),
+            runForProductionEventStore: true,
             licenceKey: LicenceTesting::VALID_LICENCE,
         );
-        $ecotone->setupDatabaseTables();
-
-        return $ecotone;
     }
 }

@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace Test\Ecotone\EventSourcing\Integration;
 
-use Ecotone\Api\Dbal\DbalConnectionFactory;
-use Ecotone\Api\ExtensionObject\ModulePackageList;
-use Ecotone\Api\Lite\Test\FlowTestSupport;
-use Ecotone\Test\LicenceTesting;
+use Ecotone\Lite\EcotoneLite;
+use Ecotone\Lite\Test\FlowTestSupport;
+use Ecotone\Messaging\Config\ModulePackageList;
+use Ecotone\Messaging\Config\ServiceConfiguration;
+use Enqueue\Dbal\DbalConnectionFactory;
 use Test\Ecotone\EventSourcing\EventSourcingMessagingTestCase;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Command\CloseTicket;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Command\RegisterTicket;
@@ -91,14 +92,19 @@ final class ProjectionWithStateTest extends EventSourcingMessagingTestCase
 
     private function bootstrapEcotone(bool $failFast = true): FlowTestSupport
     {
-        return $this->bootstrapFlowTesting(
+        return EcotoneLite::bootstrapFlowTestingWithEventStore(
             classesToResolve: [TicketCounterProjection::class],
             containerOrAvailableServices: [new TicketEventConverter(), new StateAndEventConverter(), new NotificationService(), new TicketCounterProjection(), DbalConnectionFactory::class => $this->getConnectionFactory()],
-            enabledModules: [ModulePackageList::DBAL_PACKAGE, ModulePackageList::EVENT_SOURCING_PACKAGE, ],
+            configuration: ServiceConfiguration::createWithDefaults()
+                ->withEnvironment('prod')
+                ->withFailFast($failFast)
+                ->withSkippedModulePackageNames(ModulePackageList::allPackagesExcept([ModulePackageList::DBAL_PACKAGE, ModulePackageList::EVENT_SOURCING_PACKAGE, ModulePackageList::ASYNCHRONOUS_PACKAGE]))
+                ->withNamespaces([
+                    'Test\Ecotone\EventSourcing\Fixture\Ticket',
+                    'Test\Ecotone\EventSourcing\Fixture\TicketProjectionState',
+                ]),
             pathToRootCatalog: __DIR__ . '/../../',
-            licenceKey: LicenceTesting::VALID_LICENCE,
-            namespaces: ['Test\Ecotone\EventSourcing\Fixture\Ticket', 'Test\Ecotone\EventSourcing\Fixture\TicketProjectionState', ],
-            environment: 'prod',
+            runForProductionEventStore: true
         );
     }
 }

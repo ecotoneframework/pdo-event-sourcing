@@ -2,7 +2,7 @@
 
 namespace Test\Ecotone\EventSourcing\Fixture\BasketWithSynchronousEventDrivenSaga;
 
-use Ecotone\Api\Attribute\Converter;
+use Ecotone\Messaging\Attribute\Converter;
 
 /**
  * licence Apache-2.0

@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace Test\Ecotone\EventSourcing\Integration;
 
-use Ecotone\Api\Dbal\DbalConnectionFactory;
-use Ecotone\Api\ExtensionObject\ModulePackageList;
-use Ecotone\Test\LicenceTesting;
+use Ecotone\Lite\EcotoneLite;
+use Ecotone\Messaging\Config\ModulePackageList;
+use Ecotone\Messaging\Config\ServiceConfiguration;
+use Enqueue\Dbal\DbalConnectionFactory;
 use Test\Ecotone\EventSourcing\EventSourcingMessagingTestCase;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Command\CloseTicket;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Command\RegisterTicket;
@@ -27,16 +28,15 @@ final class AggregateAndProjectionTriggerTest extends EventSourcingMessagingTest
 {
     public function test_triggering_projection_with_state_synchronously()
     {
-        $ecotoneLite = $this->bootstrapFlowTesting(
+        $ecotoneLite = EcotoneLite::bootstrapFlowTestingWithEventStore(
             [],
             [new TicketEventConverter(), new StateAndEventConverter(), new NotificationService(), new TicketCounterProjection(), DbalConnectionFactory::class => $this->getConnectionFactory()],
-            enabledModules: [ModulePackageList::EVENT_SOURCING_PACKAGE, ModulePackageList::DBAL_PACKAGE],
+            ServiceConfiguration::createWithDefaults()
+                ->withSkippedModulePackageNames(ModulePackageList::allPackagesExcept([ModulePackageList::EVENT_SOURCING_PACKAGE, ModulePackageList::DBAL_PACKAGE]))
+                ->withNamespaces(['Test\Ecotone\EventSourcing\Fixture\Ticket', 'Test\Ecotone\EventSourcing\Fixture\TicketProjectionState']),
             pathToRootCatalog: __DIR__ . '/../../',
-            licenceKey: LicenceTesting::VALID_LICENCE,
-            namespaces: ['Test\Ecotone\EventSourcing\Fixture\Ticket', 'Test\Ecotone\EventSourcing\Fixture\TicketProjectionState'],
+            runForProductionEventStore: true
         );
-
-        $ecotoneLite->initializeProjection(TicketCounterProjection::NAME);
 
         $this->assertEquals(
             1,

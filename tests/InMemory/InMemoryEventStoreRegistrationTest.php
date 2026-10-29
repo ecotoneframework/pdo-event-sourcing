@@ -4,16 +4,17 @@ declare(strict_types=1);
 
 namespace Test\Ecotone\EventSourcing\InMemory;
 
-use Ecotone\Api\Attribute\Converter;
-use Ecotone\Api\Attribute\EventHandler;
-use Ecotone\Api\Attribute\Polling;
-use Ecotone\Api\EventSourcing\Event;
-use Ecotone\Api\EventSourcing\EventSourcingConfiguration;
-use Ecotone\Api\ExtensionObject\ExecutionPollingMetadata;
-use Ecotone\Api\ExtensionObject\ModulePackageList;
-use Ecotone\Api\Lite\EcotoneLite;
-use Ecotone\Api\Projecting\FromStream;
-use Ecotone\Api\Projecting\Projection;
+use Ecotone\EventSourcing\Attribute\FromStream;
+use Ecotone\EventSourcing\EventSourcingConfiguration;
+use Ecotone\Lite\EcotoneLite;
+use Ecotone\Messaging\Attribute\Converter;
+use Ecotone\Messaging\Config\ModulePackageList;
+use Ecotone\Messaging\Config\ServiceConfiguration;
+use Ecotone\Messaging\Endpoint\ExecutionPollingMetadata;
+use Ecotone\Modelling\Attribute\EventHandler;
+use Ecotone\Modelling\Event;
+use Ecotone\Projecting\Attribute\Polling;
+use Ecotone\Projecting\Attribute\ProjectionV2;
 use Ecotone\Test\LicenceTesting;
 use PHPUnit\Framework\TestCase;
 
@@ -24,7 +25,7 @@ class InMemoryEventStoreRegistrationTest extends TestCase
 {
     public function test_registers_in_memory_event_store_stream_source_when_pdo_event_sourcing_is_in_memory_mode(): void
     {
-        $projection = new #[Projection('test_projection'), Polling('test_projection_poller'), FromStream('test_stream')] class {
+        $projection = new #[ProjectionV2('test_projection'), Polling('test_projection_poller'), FromStream('test_stream')] class {
             public array $events = [];
             public int $callCount = 0;
 
@@ -37,12 +38,13 @@ class InMemoryEventStoreRegistrationTest extends TestCase
         };
 
         // When bootstrapping with PdoEventSourcing in in-memory mode
-        $ecotone = EcotoneLite::bootstrapFlowTesting(
+        $ecotone = EcotoneLite::bootstrapFlowTestingWithEventStore(
             [TestEventForInMemoryMode::class, TestEventForInMemoryModeConverter::class, $projection::class],
             [$projection, new TestEventForInMemoryModeConverter()],
-            extensionObjects: [EventSourcingConfiguration::createInMemory()],
-            enabledModules: [ModulePackageList::EVENT_SOURCING_PACKAGE],
-            licenceKey: LicenceTesting::VALID_LICENCE,
+            configuration: ServiceConfiguration::createWithDefaults()
+                ->withSkippedModulePackageNames(ModulePackageList::allPackagesExcept([ModulePackageList::EVENT_SOURCING_PACKAGE]))
+                ->withLicenceKey(LicenceTesting::VALID_LICENCE)
+                ->addExtensionObject(EventSourcingConfiguration::createInMemory())
         );
 
         // And adding events to event store using withEventStream

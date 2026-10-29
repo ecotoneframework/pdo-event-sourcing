@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace Test\Ecotone\EventSourcing\Integration;
 
-use Ecotone\Api\Dbal\DbalConnectionFactory;
-use Ecotone\Api\Dbal\ExtensionObject\DbalConfiguration;
-use Ecotone\Api\EventSourcing\EventSourcingConfiguration;
-use Ecotone\Api\ExtensionObject\ExecutionPollingMetadata;
-use Ecotone\Api\ExtensionObject\ModulePackageList;
-use Ecotone\Api\ExtensionObject\SimpleMessageChannelBuilder;
+use Ecotone\Dbal\Configuration\DbalConfiguration;
+use Ecotone\EventSourcing\EventSourcingConfiguration;
+use Ecotone\Lite\EcotoneLite;
+use Ecotone\Messaging\Config\ModulePackageList;
+use Ecotone\Messaging\Config\ServiceConfiguration;
+use Ecotone\Messaging\Endpoint\ExecutionPollingMetadata;
+use Enqueue\Dbal\DbalConnectionFactory;
 use Test\Ecotone\EventSourcing\EventSourcingMessagingTestCase;
 use Test\Ecotone\EventSourcing\Fixture\MultipleAsyncHandlersForOneMessage\ActionCommand;
 use Test\Ecotone\EventSourcing\Fixture\MultipleAsyncHandlersForOneMessage\EventConverter;
@@ -22,28 +23,29 @@ final class MultipleAsyncHandlersForOneMessageTest extends EventSourcingMessagin
 {
     public function test_handling_multiple_same_messages(): void
     {
-        $ecotone = $this->bootstrapFlowTesting(
+        $ecotone = EcotoneLite::bootstrapFlowTestingWithEventStore(
             classesToResolve: [TestAggregate::class, EventConverter::class],
             containerOrAvailableServices: [
                 new EventConverter(),
                 DbalConnectionFactory::class => self::getConnectionFactory(),
             ],
-            extensionObjects: [
-                DbalConfiguration::createWithDefaults(),
-                EventSourcingConfiguration::createWithDefaults(),
-                SimpleMessageChannelBuilder::createQueueChannel('testAggregate'),
-            ],
-            enabledModules: [ModulePackageList::EVENT_SOURCING_PACKAGE, ModulePackageList::DBAL_PACKAGE],
-            namespaces: ['Test\Ecotone\Modelling\Fixture\MultipleAsyncHandlersForOneMessage'],
+            configuration: ServiceConfiguration::createWithDefaults()
+                ->withSkippedModulePackageNames(ModulePackageList::allPackagesExcept([ModulePackageList::EVENT_SOURCING_PACKAGE, ModulePackageList::ASYNCHRONOUS_PACKAGE]))
+                ->withNamespaces(['Test\Ecotone\Modelling\Fixture\MultipleAsyncHandlersForOneMessage'])
+                ->withExtensionObjects([
+                    DbalConfiguration::createWithDefaults(),
+                    EventSourcingConfiguration::createWithDefaults(),
+                ]),
+            runForProductionEventStore: true
         );
 
         $ecotone->sendCommand(command: new ActionCommand('123'), metadata: ['call' => 1]);
         $ecotone->sendCommand(command: new ActionCommand('123'), metadata: ['call' => 2]);
 
-        $ecotone->run('testAggregate', ExecutionPollingMetadata::createWithTestingSetup(handledMessageLimit: 1));
+        $ecotone->run('testAggregate', ExecutionPollingMetadata::createWithTestingSetup());
         self::assertEquals(1, $ecotone->getAggregate(TestAggregate::class, '123')->counter());
 
-        $ecotone->run('testAggregate', ExecutionPollingMetadata::createWithTestingSetup(handledMessageLimit: 1));
+        $ecotone->run('testAggregate', ExecutionPollingMetadata::createWithTestingSetup());
         self::assertEquals(2, $ecotone->getAggregate(TestAggregate::class, '123')->counter());
     }
 }

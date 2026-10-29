@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Test\Ecotone\EventSourcing\Integration;
 
-use Ecotone\Api\Dbal\DbalConnectionFactory;
-use Ecotone\Api\EventSourcing\EventSourcingConfiguration;
-use Ecotone\Api\ExtensionObject\ModulePackageList;
-use Ecotone\Api\Lite\Test\FlowTestSupport;
+use Ecotone\EventSourcing\EventSourcingConfiguration;
+use Ecotone\Lite\EcotoneLite;
+use Ecotone\Lite\Test\FlowTestSupport;
+use Ecotone\Messaging\Config\ModulePackageList;
+use Ecotone\Messaging\Config\ServiceConfiguration;
+use Enqueue\Dbal\DbalConnectionFactory;
 use Test\Ecotone\EventSourcing\EventSourcingMessagingTestCase;
 use Test\Ecotone\EventSourcing\Fixture\LinkingEventsWithoutProjection\EventEmitter;
 use Test\Ecotone\EventSourcing\Fixture\LinkingEventsWithoutProjection\NotificationService;
@@ -41,7 +43,7 @@ final class LinkingEventsWithoutProjectionTest extends EventSourcingMessagingTes
 
     private function bootstrapEcotone(): FlowTestSupport
     {
-        $ecotone = $this->bootstrapFlowTesting(
+        return EcotoneLite::bootstrapFlowTestingWithEventStore(
             containerOrAvailableServices: [
                 new EventEmitter(),
                 new NotificationService(),
@@ -49,15 +51,17 @@ final class LinkingEventsWithoutProjectionTest extends EventSourcingMessagingTes
                 new TicketEventConverter(),
                 DbalConnectionFactory::class => $this->getConnectionFactory(),
             ],
-            extensionObjects: [EventSourcingConfiguration::createWithDefaults()],
-            enabledModules: [ModulePackageList::DBAL_PACKAGE, ModulePackageList::EVENT_SOURCING_PACKAGE, ],
+            configuration: ServiceConfiguration::createWithDefaults()
+                ->withEnvironment('prod')
+                ->withSkippedModulePackageNames(ModulePackageList::allPackagesExcept([ModulePackageList::DBAL_PACKAGE, ModulePackageList::EVENT_SOURCING_PACKAGE, ModulePackageList::ASYNCHRONOUS_PACKAGE]))
+                ->withNamespaces([
+                    'Test\Ecotone\EventSourcing\Fixture\Ticket',
+                    'Test\Ecotone\EventSourcing\Fixture\LinkingEventsWithoutProjection',
+                ])
+                ->withExtensionObjects([EventSourcingConfiguration::createWithDefaults()]),
             pathToRootCatalog: __DIR__ . '/../../',
-            namespaces: ['Test\Ecotone\EventSourcing\Fixture\Ticket', 'Test\Ecotone\EventSourcing\Fixture\LinkingEventsWithoutProjection', ],
-            environment: 'prod',
+            runForProductionEventStore: true
         );
-        $ecotone->setupDatabaseTables();
-
-        return $ecotone;
     }
 
     private function assertState(FlowTestSupport $ecotone, string $ticketId, int $notificationsCount): void

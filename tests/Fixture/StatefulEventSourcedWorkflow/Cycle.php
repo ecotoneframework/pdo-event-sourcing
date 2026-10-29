@@ -2,15 +2,15 @@
 
 namespace Test\Ecotone\EventSourcing\Fixture\StatefulEventSourcedWorkflow;
 
-use Ecotone\Api\Attribute\Apply;
-use Ecotone\Api\Attribute\CommandHandler;
-use Ecotone\Api\Attribute\EventSourcingSaga;
-use Ecotone\Api\Attribute\Header;
-use Ecotone\Api\Attribute\Identifier;
-use Ecotone\Api\Attribute\Payload;
-use Ecotone\Api\Attribute\QueryHandler;
-use Ecotone\Api\Modelling\WithAggregateVersioning;
-use Ecotone\Api\Modelling\WithEvents;
+use Ecotone\Messaging\Attribute\Parameter\Header;
+use Ecotone\Messaging\Attribute\Parameter\Payload;
+use Ecotone\Modelling\Attribute\CommandHandler;
+use Ecotone\Modelling\Attribute\EventSourcingHandler;
+use Ecotone\Modelling\Attribute\EventSourcingSaga;
+use Ecotone\Modelling\Attribute\Identifier;
+use Ecotone\Modelling\Attribute\QueryHandler;
+use Ecotone\Modelling\WithAggregateVersioning;
+use Ecotone\Modelling\WithEvents;
 
 #[EventSourcingSaga(withInternalEventRecorder: true)]
 class Cycle
@@ -97,19 +97,19 @@ class Cycle
         return $this->certificates;
     }
 
-    #[Apply]
+    #[EventSourcingHandler]
     public function applyCycleStarted(CycleStarted $event): void
     {
         $this->cycleId = $event->cycleId;
     }
 
-    #[Apply]
+    #[EventSourcingHandler]
     public function applyAuditConducted(AuditConducted $event): void
     {
         $this->audits[] = $event->auditId;
     }
 
-    #[Apply]
+    #[EventSourcingHandler]
     public function applyCertificateIssued(CertificateIssued $event): void
     {
         $this->certificates[] = $event->certificateId;

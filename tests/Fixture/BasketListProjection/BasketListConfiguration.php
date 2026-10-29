@@ -2,8 +2,9 @@
 
 namespace Test\Ecotone\EventSourcing\Fixture\BasketListProjection;
 
-use Ecotone\Api\Attribute\ServiceContext;
-use Ecotone\Api\ExtensionObject\PollingMetadata;
+use Ecotone\EventSourcing\ProjectionRunningConfiguration;
+use Ecotone\Messaging\Attribute\ServiceContext;
+use Ecotone\Messaging\Endpoint\PollingMetadata;
 
 /**
  * licence Apache-2.0
@@ -14,7 +15,13 @@ class BasketListConfiguration
     public function setMaximumOneRunForProjections()
     {
         return PollingMetadata::create(BasketList::PROJECTION_NAME)
-            ->withExecutionAmountLimit(3)
-            ->withExecutionTimeLimitInMilliseconds(300);
+            ->setExecutionAmountLimit(3)
+            ->setExecutionTimeLimitInMilliseconds(300);
+    }
+
+    #[ServiceContext]
+    public function enablePollingProjection()
+    {
+        return ProjectionRunningConfiguration::createPolling(BasketList::PROJECTION_NAME);
     }
 }

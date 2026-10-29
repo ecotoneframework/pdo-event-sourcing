@@ -4,16 +4,14 @@ declare(strict_types=1);
 
 namespace Test\Ecotone\EventSourcing\Fixture\LinkingEventsWithoutProjection;
 
-use Ecotone\Api\Attribute\EventHandler;
-use Ecotone\Api\EventSourcing\EventStreamEmitter;
-use Ecotone\Api\EventSourcing\Stream;
+use Ecotone\EventSourcing\EventStreamEmitter;
+use Ecotone\Modelling\Attribute\EventHandler;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Event\TicketWasClosed;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Event\TicketWasRegistered;
 
 /**
  * licence Apache-2.0
  */
-#[Stream(NotificationService::STREAM_NAME)]
 final class EventEmitter
 {
     #[EventHandler(endpointId: 'inProgressTicketList.addTicket')]

@@ -7,7 +7,7 @@ declare(strict_types=1);
 
 namespace Ecotone\EventSourcing\Projecting;
 
-use Ecotone\Api\EventSourcing\Event;
+use Ecotone\Modelling\Event;
 
 class StreamEvent extends Event
 {

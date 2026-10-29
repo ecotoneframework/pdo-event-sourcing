@@ -3,16 +3,12 @@
 namespace Test\Ecotone\EventSourcing;
 
 use Doctrine\DBAL\Connection;
-use Ecotone\Api\Dbal\DbalConnectionFactory;
-use Ecotone\Api\ExtensionObject\TestConfiguration;
-use Ecotone\Api\Lite\EcotoneLite;
-use Ecotone\Api\Lite\Test\FlowTestSupport;
 use Ecotone\Dbal\DbalConnection;
-use Ecotone\Enqueue\ConnectionFactory;
 use Ecotone\Messaging\Handler\InMemoryReferenceSearchService;
+use Enqueue\Dbal\DbalConnectionFactory;
+use Interop\Queue\ConnectionFactory;
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
-use Psr\Container\ContainerInterface;
 
 /**
  * licence Apache-2.0
@@ -25,7 +21,8 @@ abstract class EventSourcingMessagingTestCase extends TestCase
 
     protected static function getSchemaManager(Connection $connection): \Doctrine\DBAL\Schema\AbstractSchemaManager
     {
-        return $connection->createSchemaManager();
+        // Handle both DBAL 3.x (getSchemaManager) and 4.x (createSchemaManager)
+        return method_exists($connection, 'getSchemaManager') ? $connection->getSchemaManager() : $connection->createSchemaManager();
     }
 
     protected function setUp(): void
@@ -46,7 +43,9 @@ abstract class EventSourcingMessagingTestCase extends TestCase
             return $this->tenantBConnection;
         }
 
-        $connectionFactory = DbalConnection::fromDsn(SecondaryTestDatabaseConnectionFactory::resolveDsn());
+        $connectionFactory = DbalConnection::fromDsn(
+            getenv('SECONDARY_DATABASE_DSN') ? getenv('SECONDARY_DATABASE_DSN') : 'mysql://ecotone:secret@127.0.0.1:3306/ecotone'
+        );
 
         $this->tenantBConnection = $connectionFactory;
         return $connectionFactory;
@@ -92,11 +91,6 @@ abstract class EventSourcingMessagingTestCase extends TestCase
         return self::getConnectionFactory()->createContext()->getDbalConnection();
     }
 
-    protected static function inTransaction(callable $operation, ?Connection $connection = null): mixed
-    {
-        return ($connection ?? self::getConnection())->transactional($operation);
-    }
-
     protected function getReferenceSearchServiceWithConnection(array $objects = [], bool $connectionAsRegistry = false)
     {
         return InMemoryReferenceSearchService::createWith(
@@ -110,7 +104,7 @@ abstract class EventSourcingMessagingTestCase extends TestCase
     public static function clearDataTables(Connection $connection): void
     {
         foreach (self::getSchemaManager($connection)->listTableNames() as $tableNames) {
-            $sql = 'DROP TABLE ' . $connection->getDatabasePlatform()->quoteIdentifier(trim($tableNames, '"`'));
+            $sql = 'DROP TABLE ' . $tableNames;
             $connection->executeQuery($sql);
         }
     }
@@ -143,46 +137,5 @@ abstract class EventSourcingMessagingTestCase extends TestCase
     protected function isMySQL(): bool
     {
         return str_starts_with(getenv('DATABASE_DSN'), 'mysql');
-    }
-
-    /**
-     * @param string[] $classesToResolve
-     * @param object[] $extensionObjects
-     * @param string[]|null $enabledModules
-     * @param array<string,mixed> $configurationVariables
-     * @param string[] $namespaces
-     */
-    protected function bootstrapFlowTesting(
-        array $classesToResolve = [],
-        ContainerInterface|array $containerOrAvailableServices = [],
-        array $extensionObjects = [],
-        ?array $enabledModules = null,
-        array $configurationVariables = [],
-        ?string $pathToRootCatalog = null,
-        bool $allowGatewaysToBeRegisteredInContainer = false,
-        bool $addInMemoryStateStoredRepository = true,
-        bool $addInMemoryEventSourcedRepository = true,
-        ?TestConfiguration $testConfiguration = null,
-        ?string $licenceKey = null,
-        array $namespaces = [],
-        string $environment = 'dev',
-        ?string $cacheDirectoryPath = null,
-    ): FlowTestSupport {
-        return EcotoneLite::bootstrapFlowTesting(
-            $classesToResolve,
-            $containerOrAvailableServices,
-            $extensionObjects,
-            $enabledModules,
-            $configurationVariables,
-            $pathToRootCatalog,
-            $allowGatewaysToBeRegisteredInContainer,
-            $addInMemoryStateStoredRepository,
-            $addInMemoryEventSourcedRepository,
-            $testConfiguration,
-            $licenceKey,
-            $namespaces,
-            $environment,
-            $cacheDirectoryPath,
-        );
     }
 }

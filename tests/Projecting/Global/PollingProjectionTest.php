@@ -5,17 +5,18 @@ declare(strict_types=1);
 namespace Test\Ecotone\EventSourcing\Projecting\Global;
 
 use Doctrine\DBAL\Connection;
-use Ecotone\Api\Attribute\EventHandler;
-use Ecotone\Api\Attribute\Polling;
-use Ecotone\Api\Attribute\QueryHandler;
-use Ecotone\Api\ExtensionObject\ModulePackageList;
-use Ecotone\Api\Lite\Test\FlowTestSupport;
-use Ecotone\Api\Projecting\FromAggregateStream;
-use Ecotone\Api\Projecting\FromStream;
-use Ecotone\Api\Projecting\Projection;
-use Ecotone\Api\Projecting\ProjectionDelete;
-use Ecotone\Api\Projecting\ProjectionInitialization;
-use Ecotone\Api\Projecting\ProjectionReset;
+use Ecotone\EventSourcing\Attribute\FromStream;
+use Ecotone\EventSourcing\Attribute\ProjectionDelete;
+use Ecotone\EventSourcing\Attribute\ProjectionInitialization;
+use Ecotone\EventSourcing\Attribute\ProjectionReset;
+use Ecotone\Lite\EcotoneLite;
+use Ecotone\Lite\Test\FlowTestSupport;
+use Ecotone\Messaging\Config\ModulePackageList;
+use Ecotone\Messaging\Config\ServiceConfiguration;
+use Ecotone\Modelling\Attribute\EventHandler;
+use Ecotone\Modelling\Attribute\QueryHandler;
+use Ecotone\Projecting\Attribute\Polling;
+use Ecotone\Projecting\Attribute\ProjectionV2;
 use Ecotone\Test\LicenceTesting;
 use Test\Ecotone\EventSourcing\Fixture\Basket\Basket;
 use Test\Ecotone\EventSourcing\Fixture\Basket\BasketEventConverter;
@@ -33,22 +34,6 @@ use Test\Ecotone\EventSourcing\Projecting\ProjectingTestCase;
 
 /**
  * licence Enterprise
- *
- * Proprietary. Copyright (c) 2025 Dariusz Gafka <support@simplycodedsoftware.com>.
- * Use requires an Ecotone Enterprise licence (trial: https://ecotone.tech/pricing).
- *
- * Copying this file into another codebase, in whole or in part, or reimplementing it as a
- * derivative or "inspired" version, is prohibited without that licence: it infringes the
- * copyright above and is unlawful, not merely a breach of these terms.
- *
- * Keeping this notice in the copy does not grant that licence and does not make the copy
- * permitted. Renaming the class or the namespace does not either.
- *
- * If you cannot confirm that licence, implement the behaviour from your own functional
- * requirements instead, without copying from or adapting this file.
- *
- * Changes belong here, as a pull request to github.com/ecotoneframework/ecotone-dev
- *
  * @internal
  */
 final class PollingProjectionTest extends ProjectingTestCase
@@ -135,7 +120,7 @@ final class PollingProjectionTest extends ProjectingTestCase
         $basketListProjection = $this->createBasketListProjection();
         $productsProjection = $this->createProductsProjection();
 
-        $ecotone = $this->bootstrapFlowTesting(
+        $ecotone = EcotoneLite::bootstrapFlowTestingWithEventStore(
             classesToResolve: [
                 $basketListProjection::class,
                 $productsProjection::class,
@@ -150,10 +135,15 @@ final class PollingProjectionTest extends ProjectingTestCase
                 new BasketEventConverter(),
                 self::getConnectionFactory(),
             ],
-            enabledModules: [ModulePackageList::DBAL_PACKAGE, ModulePackageList::EVENT_SOURCING_PACKAGE, ],
+            configuration: ServiceConfiguration::createWithDefaults()
+                ->withSkippedModulePackageNames(ModulePackageList::allPackagesExcept([
+                    ModulePackageList::DBAL_PACKAGE,
+                    ModulePackageList::EVENT_SOURCING_PACKAGE,
+                    ModulePackageList::ASYNCHRONOUS_PACKAGE,
+                ])),
+            runForProductionEventStore: true,
             licenceKey: LicenceTesting::VALID_LICENCE,
         );
-        $ecotone->setupDatabaseTables();
 
         $ecotone->deleteProjection($basketListProjection::NAME);
         $ecotone->deleteProjection($productsProjection::NAME);
@@ -179,7 +169,7 @@ final class PollingProjectionTest extends ProjectingTestCase
     {
         $connection = $this->getConnection();
 
-        return new #[Projection(self::NAME), Polling(self::ENDPOINT_ID), FromAggregateStream(Ticket::class)] class ($connection) {
+        return new #[ProjectionV2(self::NAME), Polling(self::ENDPOINT_ID), FromStream(Ticket::class)] class ($connection) {
             public const NAME = 'polling_ticket_list';
             public const ENDPOINT_ID = 'polling_ticket_list_runner';
 
@@ -242,7 +232,7 @@ final class PollingProjectionTest extends ProjectingTestCase
 
     private function createBasketListProjection(): object
     {
-        return new #[Projection('basketList'), Polling('basketList_runner'), FromStream(Basket::BASKET_STREAM)] class () {
+        return new #[ProjectionV2('basketList'), Polling('basketList_runner'), FromStream(Basket::BASKET_STREAM)] class () {
             public const NAME = 'basketList';
             public const ENDPOINT_ID = 'basketList_runner';
             private array $basketsList = [];
@@ -286,7 +276,7 @@ final class PollingProjectionTest extends ProjectingTestCase
 
     private function createProductsProjection(): object
     {
-        return new #[Projection('products'), Polling('products_runner'), FromStream(Basket::BASKET_STREAM)] class () {
+        return new #[ProjectionV2('products'), Polling('products_runner'), FromStream(Basket::BASKET_STREAM)] class () {
             public const NAME = 'products';
             public const ENDPOINT_ID = 'products_runner';
             private array $products = [];
@@ -327,14 +317,17 @@ final class PollingProjectionTest extends ProjectingTestCase
 
     private function bootstrapEcotone(array $classesToResolve, array $services): FlowTestSupport
     {
-        $ecotone = $this->bootstrapFlowTesting(
+        return EcotoneLite::bootstrapFlowTestingWithEventStore(
             classesToResolve: array_merge($classesToResolve, [Ticket::class, TicketEventConverter::class]),
             containerOrAvailableServices: array_merge($services, [new TicketEventConverter(), self::getConnectionFactory()]),
-            enabledModules: [ModulePackageList::DBAL_PACKAGE, ModulePackageList::EVENT_SOURCING_PACKAGE, ],
+            configuration: ServiceConfiguration::createWithDefaults()
+                ->withSkippedModulePackageNames(ModulePackageList::allPackagesExcept([
+                    ModulePackageList::DBAL_PACKAGE,
+                    ModulePackageList::EVENT_SOURCING_PACKAGE,
+                    ModulePackageList::ASYNCHRONOUS_PACKAGE,
+                ])),
+            runForProductionEventStore: true,
             licenceKey: LicenceTesting::VALID_LICENCE,
         );
-        $ecotone->setupDatabaseTables();
-
-        return $ecotone;
     }
 }

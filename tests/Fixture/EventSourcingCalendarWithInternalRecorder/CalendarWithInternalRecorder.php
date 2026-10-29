@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace Test\Ecotone\EventSourcing\Fixture\EventSourcingCalendarWithInternalRecorder;
 
-use Ecotone\Api\Attribute\Apply;
-use Ecotone\Api\Attribute\CommandHandler;
-use Ecotone\Api\Attribute\EventSourcingAggregate;
-use Ecotone\Api\Attribute\Identifier;
-use Ecotone\Api\Attribute\QueryHandler;
-use Ecotone\Api\Modelling\WithAggregateVersioning;
-use Ecotone\Api\Modelling\WithEvents;
+use Ecotone\Modelling\Attribute\CommandHandler;
+use Ecotone\Modelling\Attribute\EventSourcingAggregate;
+use Ecotone\Modelling\Attribute\EventSourcingHandler;
+use Ecotone\Modelling\Attribute\Identifier;
+use Ecotone\Modelling\Attribute\QueryHandler;
+use Ecotone\Modelling\WithAggregateVersioning;
+use Ecotone\Modelling\WithEvents;
 use Test\Ecotone\EventSourcing\Fixture\Calendar\CalendarClosed;
 use Test\Ecotone\EventSourcing\Fixture\Calendar\CalendarCreated;
 use Test\Ecotone\EventSourcing\Fixture\Calendar\CloseCalendar;
@@ -90,7 +90,7 @@ final class CalendarWithInternalRecorder
         return $this;
     }
 
-    #[Apply]
+    #[EventSourcingHandler]
     public function applyCalendarCreated(CalendarCreated $event): void
     {
         $this->calendarId = $event->calendarId;
@@ -98,13 +98,13 @@ final class CalendarWithInternalRecorder
         $this->isOpen = true;
     }
 
-    #[Apply]
+    #[EventSourcingHandler]
     public function applyMeetingScheduled(MeetingScheduled $event): void
     {
         $this->meetings[] = $event->meetingId;
     }
 
-    #[Apply]
+    #[EventSourcingHandler]
     public function applyCalendarClosed(CalendarClosed $event): void
     {
         $this->isOpen = false;

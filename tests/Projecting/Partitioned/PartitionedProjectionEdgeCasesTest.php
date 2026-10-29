@@ -1,22 +1,7 @@
 <?php
 
-/**
+/*
  * licence Enterprise
- *
- * Proprietary. Copyright (c) 2025 Dariusz Gafka <support@simplycodedsoftware.com>.
- * Use requires an Ecotone Enterprise licence (trial: https://ecotone.tech/pricing).
- *
- * Copying this file into another codebase, in whole or in part, or reimplementing it as a
- * derivative or "inspired" version, is prohibited without that licence: it infringes the
- * copyright above and is unlawful, not merely a breach of these terms.
- *
- * Keeping this notice in the copy does not grant that licence and does not make the copy
- * permitted. Renaming the class or the namespace does not either.
- *
- * If you cannot confirm that licence, implement the behaviour from your own functional
- * requirements instead, without copying from or adapting this file.
- *
- * Changes belong here, as a pull request to github.com/ecotoneframework/ecotone-dev
  */
 declare(strict_types=1);
 
@@ -24,17 +9,18 @@ namespace Test\Ecotone\EventSourcing\Projecting\Partitioned;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Platforms\AbstractMySQLPlatform;
-use Ecotone\Api\Attribute\EventHandler;
-use Ecotone\Api\Attribute\QueryHandler;
-use Ecotone\Api\Dbal\ExtensionObject\DbalConfiguration;
-use Ecotone\Api\ExtensionObject\ModulePackageList;
-use Ecotone\Api\Lite\Test\FlowTestSupport;
-use Ecotone\Api\Projecting\FromAggregateStream;
-use Ecotone\Api\Projecting\Partitioned;
-use Ecotone\Api\Projecting\Projection;
-use Ecotone\Api\Projecting\ProjectionDelete;
-use Ecotone\Api\Projecting\ProjectionInitialization;
-use Ecotone\Api\Projecting\ProjectionReset;
+use Ecotone\EventSourcing\Attribute\FromStream;
+use Ecotone\EventSourcing\Attribute\ProjectionDelete;
+use Ecotone\EventSourcing\Attribute\ProjectionInitialization;
+use Ecotone\EventSourcing\Attribute\ProjectionReset;
+use Ecotone\Lite\EcotoneLite;
+use Ecotone\Lite\Test\FlowTestSupport;
+use Ecotone\Messaging\Config\ModulePackageList;
+use Ecotone\Messaging\Config\ServiceConfiguration;
+use Ecotone\Modelling\Attribute\EventHandler;
+use Ecotone\Modelling\Attribute\QueryHandler;
+use Ecotone\Projecting\Attribute\Partitioned;
+use Ecotone\Projecting\Attribute\ProjectionV2;
 use Ecotone\Test\LicenceTesting;
 use Test\Ecotone\EventSourcing\Fixture\Calendar\CalendarCreated;
 use Test\Ecotone\EventSourcing\Fixture\Calendar\CreateCalendar;
@@ -233,7 +219,7 @@ final class PartitionedProjectionEdgeCasesTest extends ProjectingTestCase
         self::assertEquals(50, $ecotone->sendQueryWithRouting('getTicketCount'), 'All 50 partitions should be backfilled');
     }
 
-    public function test_reset_projection_replays_all_events_from_scratch(): void
+    public function test_reset_and_trigger_clears_state_and_replays_all_events(): void
     {
         $projection = $this->createTicketListProjection();
 
@@ -249,14 +235,18 @@ final class PartitionedProjectionEdgeCasesTest extends ProjectingTestCase
 
         $ecotone->resetProjection($projection::NAME);
 
-        self::assertCount(2, $ecotone->sendQueryWithRouting('getTicketList'), 'Reset should replay all events from scratch');
+        self::assertCount(0, $ecotone->sendQueryWithRouting('getTicketList'), 'Reset should clear all data');
+
+        $ecotone->triggerProjection($projection::NAME);
+
+        self::assertCount(2, $ecotone->sendQueryWithRouting('getTicketList'), 'Trigger should replay all events');
     }
 
     private function createIdempotentProjection(): object
     {
         $connection = $this->getConnection();
 
-        return new #[Projection(self::NAME), Partitioned, FromAggregateStream(Ticket::class)] class ($connection) {
+        return new #[ProjectionV2(self::NAME), Partitioned, FromStream(stream: Ticket::class, aggregateType: Ticket::class)] class ($connection) {
             public const NAME = 'idempotent_projection';
 
             public function __construct(private Connection $connection)
@@ -303,7 +293,7 @@ final class PartitionedProjectionEdgeCasesTest extends ProjectingTestCase
     {
         $connection = $this->getConnection();
 
-        return new #[Projection(self::NAME), Partitioned, FromAggregateStream(Ticket::class)] class ($connection) {
+        return new #[ProjectionV2(self::NAME), Partitioned, FromStream(stream: Ticket::class, aggregateType: Ticket::class)] class ($connection) {
             public const NAME = 'ticket_counting_projection';
 
             public function __construct(private Connection $connection)
@@ -346,7 +336,7 @@ final class PartitionedProjectionEdgeCasesTest extends ProjectingTestCase
     {
         $connection = $this->getConnection();
 
-        return new #[Projection(self::NAME), Partitioned, FromAggregateStream(Ticket::class)] class ($connection) {
+        return new #[ProjectionV2(self::NAME), Partitioned, FromStream(stream: Ticket::class, aggregateType: Ticket::class)] class ($connection) {
             public const NAME = 'ticket_list_projection';
 
             public function __construct(private Connection $connection)
@@ -389,7 +379,7 @@ final class PartitionedProjectionEdgeCasesTest extends ProjectingTestCase
     {
         $connection = $this->getConnection();
 
-        return new #[Projection(self::NAME), Partitioned, FromAggregateStream(CalendarWithInternalRecorder::class), FromAggregateStream(MeetingWithEventSourcing::class)] class ($connection) {
+        return new #[ProjectionV2(self::NAME), Partitioned, FromStream(stream: CalendarWithInternalRecorder::class, aggregateType: CalendarWithInternalRecorder::class), FromStream(stream: MeetingWithEventSourcing::class, aggregateType: MeetingWithEventSourcing::class)] class ($connection) {
             public const NAME = 'multi_stream_edge_cases';
 
             public function __construct(private Connection $connection)
@@ -446,26 +436,36 @@ final class PartitionedProjectionEdgeCasesTest extends ProjectingTestCase
 
     private function bootstrapEcotoneForTickets(array $classesToResolve, array $services): FlowTestSupport
     {
-        return $this->bootstrapFlowTesting(
+        return EcotoneLite::bootstrapFlowTestingWithEventStore(
             classesToResolve: array_merge($classesToResolve, [Ticket::class, TicketEventConverter::class]),
             containerOrAvailableServices: array_merge($services, [new TicketEventConverter(), self::getConnectionFactory()]),
-            extensionObjects: [DbalConfiguration::createForTesting()],
-            enabledModules: [ModulePackageList::DBAL_PACKAGE, ModulePackageList::EVENT_SOURCING_PACKAGE, ],
+            configuration: ServiceConfiguration::createWithDefaults()
+                ->withSkippedModulePackageNames(ModulePackageList::allPackagesExcept([
+                    ModulePackageList::DBAL_PACKAGE,
+                    ModulePackageList::EVENT_SOURCING_PACKAGE,
+                    ModulePackageList::ASYNCHRONOUS_PACKAGE,
+                ])),
+            runForProductionEventStore: true,
             licenceKey: LicenceTesting::VALID_LICENCE,
         );
     }
 
     private function bootstrapEcotoneForCalendar(array $classesToResolve, array $services): FlowTestSupport
     {
-        return $this->bootstrapFlowTesting(
+        return EcotoneLite::bootstrapFlowTestingWithEventStore(
             classesToResolve: array_merge($classesToResolve, [
                 CalendarWithInternalRecorder::class,
                 MeetingWithEventSourcing::class,
                 EventsConverter::class,
             ]),
             containerOrAvailableServices: array_merge($services, [new EventsConverter(), self::getConnectionFactory()]),
-            extensionObjects: [DbalConfiguration::createForTesting()],
-            enabledModules: [ModulePackageList::DBAL_PACKAGE, ModulePackageList::EVENT_SOURCING_PACKAGE, ],
+            configuration: ServiceConfiguration::createWithDefaults()
+                ->withSkippedModulePackageNames(ModulePackageList::allPackagesExcept([
+                    ModulePackageList::DBAL_PACKAGE,
+                    ModulePackageList::EVENT_SOURCING_PACKAGE,
+                    ModulePackageList::ASYNCHRONOUS_PACKAGE,
+                ])),
+            runForProductionEventStore: true,
             licenceKey: LicenceTesting::VALID_LICENCE,
         );
     }

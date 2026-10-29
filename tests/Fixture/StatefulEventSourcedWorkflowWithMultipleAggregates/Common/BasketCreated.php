@@ -2,7 +2,7 @@
 
 namespace Test\Ecotone\EventSourcing\Fixture\StatefulEventSourcedWorkflowWithMultipleAggregates\Common;
 
-use Ecotone\Api\Attribute\NamedEvent;
+use Ecotone\Modelling\Attribute\NamedEvent;
 
 #[NamedEvent('BasketCreated')]
 class BasketCreated

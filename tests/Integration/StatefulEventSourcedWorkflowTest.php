@@ -2,9 +2,10 @@
 
 namespace Test\Ecotone\EventSourcing\Integration;
 
-use Ecotone\Api\ExtensionObject\ModulePackageList;
-use Ecotone\Api\ExtensionObject\SimpleMessageChannelBuilder;
-use Ecotone\Api\Lite\Test\FlowTestSupport;
+use Ecotone\Lite\EcotoneLite;
+use Ecotone\Lite\Test\FlowTestSupport;
+use Ecotone\Messaging\Config\ModulePackageList;
+use Ecotone\Messaging\Config\ServiceConfiguration;
 use Test\Ecotone\EventSourcing\EventSourcingMessagingTestCase;
 use Test\Ecotone\EventSourcing\Fixture\StatefulEventSourcedWorkflow\Audit;
 use Test\Ecotone\EventSourcing\Fixture\StatefulEventSourcedWorkflow\AuditConducted;
@@ -27,7 +28,6 @@ class StatefulEventSourcedWorkflowTest extends EventSourcingMessagingTestCase
         $cycleGateway = $ecotone->getGateway(CycleGateway::class);
 
         $cycleGateway->submitAnAudit(cycleId: 'foo', audit: new Audit('123', new Certificate('234')));
-        $ecotone->run('cycle');
 
         self::assertEquals(
             [
@@ -35,7 +35,7 @@ class StatefulEventSourcedWorkflowTest extends EventSourcingMessagingTestCase
                 new AuditConducted('foo', '123'),
                 new CertificateIssued('foo', '234'),
             ],
-            $ecotone->popRecordedEvents()
+            $ecotone->getRecordedEvents()
         );
 
         self::assertEquals(['123'], $cycleGateway->conductedAudits('foo'));
@@ -59,14 +59,13 @@ class StatefulEventSourcedWorkflowTest extends EventSourcingMessagingTestCase
         $cycleGateway = $ecotone->getGateway(CycleGateway::class);
 
         $cycleGateway->submitAnAudit(cycleId: 'foo', audit: new Audit('678', new Certificate('987')));
-        $ecotone->run('cycle');
 
         self::assertEquals(
             [
                 new AuditConducted('foo', '678'),
                 new CertificateIssued('foo', '987'),
             ],
-            $ecotone->popRecordedEvents()
+            $ecotone->getRecordedEvents()
         );
 
         self::assertEquals(['123', '678'], $cycleGateway->conductedAudits('foo'));
@@ -75,7 +74,7 @@ class StatefulEventSourcedWorkflowTest extends EventSourcingMessagingTestCase
 
     private function bootstrapEcotone(): FlowTestSupport
     {
-        return $this->bootstrapFlowTesting(
+        return EcotoneLite::bootstrapFlowTestingWithEventStore(
             classesToResolve: [
                 Cycle::class,
                 CycleGateway::class,
@@ -85,10 +84,11 @@ class StatefulEventSourcedWorkflowTest extends EventSourcingMessagingTestCase
                 new EventsConverters(),
                 self::getConnectionFactory(),
             ],
-            extensionObjects: [SimpleMessageChannelBuilder::createQueueChannel('cycle')],
-            enabledModules: [ModulePackageList::EVENT_SOURCING_PACKAGE, ModulePackageList::DBAL_PACKAGE],
+            configuration: ServiceConfiguration::createWithDefaults()
+                ->withSkippedModulePackageNames(ModulePackageList::allPackagesExcept([ModulePackageList::EVENT_SOURCING_PACKAGE, ModulePackageList::DBAL_PACKAGE]))
+                ->withNamespaces(['Test\Ecotone\EventSourcing\Fixture\StatefulEventSourcedWorkflow']),
             pathToRootCatalog: __DIR__ . '/../../',
-            namespaces: ['Test\Ecotone\EventSourcing\Fixture\StatefulEventSourcedWorkflow'],
+            runForProductionEventStore: true,
         );
     }
 }

@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace Test\Ecotone\EventSourcing\InMemory;
 
-use Ecotone\Api\ExtensionObject\ModulePackageList;
-use Ecotone\Api\Lite\EcotoneLite;
+use Ecotone\Lite\EcotoneLite;
+use Ecotone\Messaging\Config\ModulePackageList;
+use Ecotone\Messaging\Config\ServiceConfiguration;
 use PHPUnit\Framework\TestCase;
 use Test\Ecotone\EventSourcing\Fixture\Basket\BasketEventConverter;
 use Test\Ecotone\EventSourcing\Fixture\Basket\Command\AddProduct;
@@ -28,11 +29,15 @@ final class SynchronousEventDrivenSagaTest extends TestCase
 {
     public function test_product_is_added_by_synchronous_event_driven_saga(): void
     {
-        $testSupport = EcotoneLite::bootstrapFlowTesting(
+        $testSupport = EcotoneLite::bootstrapFlowTestingWithEventStore(
             containerOrAvailableServices: [new SagaProjection(), new SynchronousBasketList(), new SagaEventConverter(), new BasketEventConverter()],
-            enabledModules: [ModulePackageList::EVENT_SOURCING_PACKAGE],
-            pathToRootCatalog: __DIR__ . '/../../',
-            namespaces: ['Test\Ecotone\EventSourcing\Fixture\Basket', 'Test\Ecotone\EventSourcing\Fixture\BasketWithSynchronousEventDrivenSaga', ],
+            configuration: ServiceConfiguration::createWithDefaults()
+                ->withSkippedModulePackageNames(ModulePackageList::allPackagesExcept([ModulePackageList::EVENT_SOURCING_PACKAGE]))
+                ->withNamespaces([
+                    'Test\Ecotone\EventSourcing\Fixture\Basket',
+                    'Test\Ecotone\EventSourcing\Fixture\BasketWithSynchronousEventDrivenSaga',
+                ]),
+            pathToRootCatalog: __DIR__ . '/../../'
         );
 
         $testSupport->sendCommand(new CreateBasket('1000'));
@@ -40,13 +45,13 @@ final class SynchronousEventDrivenSagaTest extends TestCase
         self::assertEquals([
             new CreateBasket('1000'),
             new AddProduct('1000', 'chocolate'),
-        ], $testSupport->popRecordedCommands());
+        ], $testSupport->getRecordedCommands());
 
         self::assertEquals([
             new BasketWasCreated('1000'),
             new SagaStarted('1000'),
             new ProductWasAddedToBasket('1000', 'chocolate'),
-        ], $testSupport->popRecordedEvents());
+        ], $testSupport->getRecordedEvents());
 
         self::assertEquals(true, $testSupport->sendQueryWithRouting('isSagaStarted', '1000'));
 

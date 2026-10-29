@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Test\Ecotone\EventSourcing\Fixture\MetadataPropagationWithAsyncProjection;
 
-use Ecotone\Api\Attribute\NamedEvent;
+use Ecotone\Modelling\Attribute\NamedEvent;
 
 #[NamedEvent('order.product_added')]
 /**

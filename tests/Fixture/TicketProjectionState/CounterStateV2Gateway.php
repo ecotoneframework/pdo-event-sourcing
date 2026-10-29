@@ -2,7 +2,7 @@
 
 namespace Test\Ecotone\EventSourcing\Fixture\TicketProjectionState;
 
-use Ecotone\Api\Projecting\ProjectionStateGateway;
+use Ecotone\EventSourcing\Attribute\ProjectionStateGateway;
 
 interface CounterStateV2Gateway
 {

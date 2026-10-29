@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace Test\Ecotone\EventSourcing\Integration;
 
-use Ecotone\Api\Dbal\DbalConnectionFactory;
-use Ecotone\Api\ExtensionObject\ModulePackageList;
-use Ecotone\EventSourcing\StreamTableRegistry;
+use Ecotone\Lite\EcotoneLite;
+use Ecotone\Messaging\Config\ModulePackageList;
+use Ecotone\Messaging\Config\ServiceConfiguration;
+use Enqueue\Dbal\DbalConnectionFactory;
 use Test\Ecotone\EventSourcing\EventSourcingMessagingTestCase;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\Command\RegisterTicket;
+use Test\Ecotone\EventSourcing\Fixture\Ticket\Ticket;
 use Test\Ecotone\EventSourcing\Fixture\Ticket\TicketEventConverter;
 use Test\Ecotone\EventSourcing\Fixture\TicketWithSynchronousEventDrivenProjection\InProgressTicketList;
 
@@ -23,12 +25,17 @@ final class FlowTestingTest extends EventSourcingMessagingTestCase
 {
     public function test_resetting_projection_and_restarting_test()
     {
-        $ecotone = $this->bootstrapFlowTesting(
+        $ecotone = EcotoneLite::bootstrapFlowTestingWithEventStore(
             containerOrAvailableServices: [new InProgressTicketList($this->getConnection()), new TicketEventConverter(), DbalConnectionFactory::class => $this->getConnectionFactory()],
-            enabledModules: [ModulePackageList::EVENT_SOURCING_PACKAGE, ModulePackageList::DBAL_PACKAGE],
+            configuration: ServiceConfiguration::createWithDefaults()
+                ->withEnvironment('prod')
+                ->withSkippedModulePackageNames(ModulePackageList::allPackagesExcept([ModulePackageList::EVENT_SOURCING_PACKAGE]))
+                ->withNamespaces([
+                    'Test\Ecotone\EventSourcing\Fixture\Ticket',
+                    'Test\Ecotone\EventSourcing\Fixture\TicketWithSynchronousEventDrivenProjection',
+                ]),
             pathToRootCatalog: __DIR__ . '/../../',
-            namespaces: ['Test\Ecotone\EventSourcing\Fixture\Ticket', 'Test\Ecotone\EventSourcing\Fixture\TicketWithSynchronousEventDrivenProjection', ],
-            environment: 'prod',
+            runForProductionEventStore: true
         );
 
         $ecotone->initializeProjection(InProgressTicketList::IN_PROGRESS_TICKET_PROJECTION);
@@ -39,7 +46,7 @@ final class FlowTestingTest extends EventSourcingMessagingTestCase
 
         self::assertEquals([['ticket_id' => '123', 'ticket_type' => 'alert']], $ecotone->sendQueryWithRouting('getInProgressTickets'));
 
-        $ecotone->deleteEventStream(StreamTableRegistry::DEFAULT_STREAM)->setupDatabaseTables();
+        $ecotone->deleteEventStream(Ticket::class);
         $ecotone->resetProjection(InProgressTicketList::IN_PROGRESS_TICKET_PROJECTION);
 
         self::assertEquals([], $ecotone->sendQueryWithRouting('getInProgressTickets'));
